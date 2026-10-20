@@ -10,3 +10,6 @@ coverage/
 .vite/
 *.tsbuildinfo
 packages/db/generated/
+
+# Editor-local settings
+.vscode/
