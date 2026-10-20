@@ -9,53 +9,56 @@ Updated: 2026-10-21
 API boots with validated env, Helmet, CORS allowlist, pino request logging, a
 layered `/api/v1/health` route that really pings PostgreSQL, and a typed error
 handler. Web app has a Tailwind design base, router shell, native-fetch API
-client and a status panel that reads the health endpoint. Prisma schema covers
-`User` (Firebase UID, roles) and a self-referencing `Category` tree.
+client and a status panel that reads the health endpoint.
 
-**Database connected.** Supabase project `tqowmbdrqselsuftwsfg` in `ap-south-1`
-(Mumbai) via the Session Pooler on port 5432. Migration
-`20261020193108_init_identity_and_categories` is applied; `User`, `Category` and
-the `UserRole` enum exist in the live database. The built API returns
-`{"status":"ok","checks":{"database":"up"}}`.
+**Database connected.** Supabase project in `ap-south-1` (Mumbai) via Session
+Pooler on port 5432. Env files rotated and working.
+
+**Phase 2 — product catalog.** Prisma schema extended with `Product`,
+`ProductVariant`, `ProductImage`, plus `ProductStatus` and `FulfillmentType`
+enums. Migration `20261020200730_add_product_catalog` applied to live DB.
+
+Public read-only API endpoints:
+- `GET /api/v1/products` — paginated, filterable (category, search, fulfillment,
+  inStock), sortable (createdAt, name, position, price). Excludes DRAFT/ARCHIVED.
+- `GET /api/v1/products/:slug` — full detail with variants, images, category tree.
+- `GET /api/v1/categories` — non-archived category tree for storefront navigation.
+
+Shared Zod contracts for query validation, response shapes, pagination. 23 tests
+passing (env validation, product query validation, product service with mocked
+Prisma). All typecheck, lint, build clean.
+
+Admin write operations (create/update/archive products, manage inventory) are
+designed at the service layer but not exposed as endpoints. They will be wired
+once Firebase authentication and role-based authorization are implemented.
 
 ## Decisions
 
 - Money is stored and transported as integer paise; no floats in pricing.
-- `packages/*` export compiled `dist/`, so the compiled API resolves them at
-  runtime on Render without bundling.
+- `packages/*` export compiled `dist/`.
 - `getEnv()` is lazy so modules are unit-testable without a full environment.
 - API error responses all use `{ error: { code, message, details? } }`.
-- Express 4 (not 5) for stable typings with `helmet`/`pino-http`.
-- Supabase **Session Pooler (5432)** for both runtime and migrations. The
-  transaction pooler (6543) is unusable for `prisma migrate`, which needs
-  session-level advisory locks; the direct connection is IPv6-only and so
-  unreliable from Render. Because one URI serves both roles, the schema needs
-  no `directUrl`.
-- Env files are loaded by Node's native `--env-file-if-exists=.env`, not
-  `dotenv`. The `-if-exists` form keeps Render working, where variables come
-  from the dashboard and no `.env` file exists.
-- Mumbai region chosen over the initial Tokyo project for customer latency.
-- Razorpay webhooks will need a raw-body parser mounted before `express.json`;
-  noted in `apps/api/src/app.ts`.
+- Express 4 (not 5) for stable typings.
+- Supabase Session Pooler (5432) for both runtime and migrations.
+- Env files loaded by Node's native `--env-file-if-exists=.env`.
+- Products use slug-based lookup (public), UUID internally.
+- Category filter matches the category and all its children.
+- Price sorting is in-memory (acceptable for ≤100 items per page) because
+  the min-price lives on variants, not the product row.
+- `ProductVariant.stockQuantity` is nullable: null means unlimited
+  (made-to-order items).
+- Cloudinary is behind a service boundary: `ProductImage.url` stores the CDN
+  URL but the upload integration lands in a later phase.
 
 ## Open issues
 
-- **The database password was shared in plaintext in a chat transcript and
-  must be rotated** (Supabase > Project Settings > Database > reset password,
-  then re-run the helper that writes it into the two ignored `.env` files).
-- The abandoned Tokyo Supabase project should be deleted so it is not a
-  forgotten open credential.
-- `DATABASE_URL` is duplicated in `packages/db/.env` and `apps/api/.env` and
-  the two must stay in sync. Worth collapsing to one root `.env` later.
-- No credentials yet for Firebase Admin, Cloudinary, Razorpay or Resend. The
-  required variable names are listed in `apps/api/.env.example`; no
-  integration is stubbed or faked.
-- No git remote is configured, so nothing has been pushed off this machine.
-- `pnpm` was installed globally via npm because `corepack enable` needs
-  administrator rights on this machine.
+- No Firebase Admin credentials: admin write endpoints cannot be exposed yet.
+- No Cloudinary, Razorpay, or Resend credentials configured.
+- `DATABASE_URL` duplicated in two `.env` files.
+- The abandoned Tokyo Supabase project should be deleted.
 
 ## Next task
 
-Phase 2 — catalogue domain: products, variants, images, pricing and stock
-models; admin CRUD with reordering and archiving; public read endpoints with
-filtering and pagination.
+Phase 3 — Firebase authentication: Google sign-in on the frontend, Firebase
+Admin SDK verification on the backend, auth middleware, role-based access
+control, and admin write endpoints for catalog management.

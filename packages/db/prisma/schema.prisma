@@ -1,6 +1,3 @@
-// Phase 1 foundation schema: identity and the category tree only.
-// Products, variants, inventory, orders and payments arrive in later phases.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,6 +6,10 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ──────────────────────────────────────────────
+// Identity
+// ──────────────────────────────────────────────
 
 enum UserRole {
   CUSTOMER
@@ -32,6 +33,10 @@ model User {
   @@index([role])
 }
 
+// ──────────────────────────────────────────────
+// Catalog
+// ──────────────────────────────────────────────
+
 /// Two-level tree: a root category (Pipe Cleaner, Crochet) with subcategories.
 model Category {
   id          String     @id @default(uuid()) @db.Uuid
@@ -49,6 +54,99 @@ model Category {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  products    Product[]
+
   @@index([parentId, position])
   @@index([isArchived])
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum FulfillmentType {
+  READY_STOCK
+  MADE_TO_ORDER
+}
+
+model Product {
+  id              String          @id @default(uuid()) @db.Uuid
+  slug            String          @unique
+  name            String
+  description     String?         @db.Text
+  shortDescription String?        @db.VarChar(300)
+
+  categoryId      String          @db.Uuid
+  category        Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  status          ProductStatus   @default(DRAFT)
+  fulfillmentType FulfillmentType @default(READY_STOCK)
+
+  /// Estimated production days for made-to-order items.
+  productionDays  Int?
+
+  /// SEO fields
+  metaTitle       String?         @db.VarChar(70)
+  metaDescription String?         @db.VarChar(160)
+
+  /// Position within category for manual ordering.
+  position        Int             @default(0)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  variants        ProductVariant[]
+  images          ProductImage[]
+
+  @@index([categoryId, position])
+  @@index([status])
+  @@index([slug])
+}
+
+model ProductVariant {
+  id             String   @id @default(uuid()) @db.Uuid
+  productId      String   @db.Uuid
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Display label, e.g. "Small / Red" or "Default" for single-variant products.
+  label          String   @default("Default")
+  sku            String   @unique
+
+  /// Price in integer paise (1 INR = 100 paise). Never a float.
+  priceInPaise   Int
+  /// Optional compare-at / MRP price for showing discounts.
+  compareAtPriceInPaise Int?
+
+  /// Current stock quantity. Null means unlimited (made-to-order).
+  stockQuantity  Int?
+  /// Minimum stock level before triggering low-stock alerts.
+  lowStockThreshold Int   @default(5)
+
+  /// Variant ordering within the product.
+  position       Int      @default(0)
+  isAvailable    Boolean  @default(true)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([productId, position])
+  @@index([isAvailable])
+}
+
+model ProductImage {
+  id         String   @id @default(uuid()) @db.Uuid
+  productId  String   @db.Uuid
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Cloudinary (or other CDN) URL. The upload integration lands in a later phase.
+  url        String
+  altText    String?
+  /// Display order; 0 = hero image.
+  position   Int      @default(0)
+
+  createdAt  DateTime @default(now())
+
+  @@index([productId, position])
 }
