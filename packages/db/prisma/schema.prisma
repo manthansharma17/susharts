@@ -1,0 +1,54 @@
+// Phase 1 foundation schema: identity and the category tree only.
+// Products, variants, inventory, orders and payments arrive in later phases.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CUSTOMER
+  STAFF
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  firebaseUid   String    @unique
+  email         String    @unique
+  displayName   String?
+  photoUrl      String?
+  phone         String?
+  role          UserRole  @default(CUSTOMER)
+  isDisabled    Boolean   @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([role])
+}
+
+/// Two-level tree: a root category (Pipe Cleaner, Crochet) with subcategories.
+model Category {
+  id          String     @id @default(uuid()) @db.Uuid
+  parentId    String?    @db.Uuid
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children    Category[] @relation("CategoryTree")
+
+  slug        String     @unique
+  name        String
+  description String?
+  imageUrl    String?
+  /// Manual ordering within the parent; admins reorder by rewriting this.
+  position    Int        @default(0)
+  isArchived  Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([parentId, position])
+  @@index([isArchived])
+}
