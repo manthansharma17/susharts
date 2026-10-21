@@ -27,4 +27,67 @@
   .field {
     @apply rounded-full border border-blush-200 bg-white px-4 py-2 text-sm text-cocoa-800 placeholder:text-cocoa-300 focus:border-blush-400 focus:outline-none focus:ring-2 focus:ring-blush-200;
   }
+
+  /* Dropdowns: pink chevron, soft pink fill, works in every browser. */
+  select.field {
+    @apply cursor-pointer appearance-none bg-blush-50 pr-11 font-medium transition hover:border-blush-300 hover:bg-blush-100 disabled:cursor-not-allowed disabled:opacity-60;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%23d05a7a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 7.5l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1rem;
+  }
+  select.field option {
+    @apply bg-white text-cocoa-800;
+  }
+
+  .qty-stepper {
+    @apply inline-flex items-center rounded-full border border-blush-200 bg-blush-50 p-1;
+  }
+  .qty-stepper button {
+    @apply flex h-8 w-8 items-center justify-center rounded-full text-lg font-semibold text-blush-700 transition hover:bg-white hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blush-400 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:shadow-none;
+  }
+}
+
+/*
+ * Customizable <select> (Chromium 135+: Chrome, Edge, Brave). The open list
+ * becomes a rounded pink panel; other browsers keep the styled native list.
+ */
+@supports (appearance: base-select) {
+  select.field,
+  select.field::picker(select) {
+    appearance: base-select;
+  }
+  select.field::picker-icon {
+    display: none;
+  }
+  select.field::picker(select) {
+    margin-top: 0.4rem;
+    border: 1px solid theme('colors.blush.200');
+    border-radius: 1rem;
+    background: #fff;
+    padding: 0.35rem;
+    box-shadow: 0 18px 40px -16px rgba(208, 90, 122, 0.45);
+    max-height: 18rem;
+  }
+  select.field option {
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.875rem;
+    color: theme('colors.cocoa.800');
+  }
+  select.field option:hover,
+  select.field option:focus-visible {
+    background: theme('colors.blush.100');
+    outline: none;
+  }
+  select.field option:checked {
+    background: theme('colors.blush.200');
+    font-weight: 600;
+  }
+  select.field option::checkmark {
+    color: theme('colors.blush.600');
+  }
+  select.field option:disabled {
+    color: theme('colors.cocoa.300');
+  }
 }

@@ -122,7 +122,7 @@ export function ShopPage() {
           aria-label="Category"
           value={category}
           onChange={(e) => updateParam('category', e.target.value)}
-          className="field pr-8"
+          className="field"
         >
           <option value="">All categories</option>
           {allSubcategories.map((c) => (
@@ -136,7 +136,7 @@ export function ShopPage() {
           aria-label="Sort by"
           value={sortKey}
           onChange={(e) => handleSort(e.target.value)}
-          className="field pr-8"
+          className="field"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>

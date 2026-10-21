@@ -73,7 +73,7 @@ function CategoryFields({
           value={value.parentId}
           disabled={Boolean(parentLocked)}
           onChange={(e) => set({ parentId: e.target.value })}
-          className="field mt-1 w-full pr-8"
+          className="field mt-1 w-full"
         >
           <option value="">None — main category</option>
           {parents.map((p) => (

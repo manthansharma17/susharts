@@ -243,7 +243,7 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
           id="p-status"
           value={value.status}
           onChange={(e) => set({ status: e.target.value as Status })}
-          className="field w-full pr-8"
+          className="field w-full"
         >
           <option value="DRAFT">Draft (hidden)</option>
           <option value="ACTIVE">Active (visible in store)</option>
@@ -255,7 +255,7 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
           id="p-fulfil"
           value={value.fulfillmentType}
           onChange={(e) => set({ fulfillmentType: e.target.value as Fulfillment })}
-          className="field w-full pr-8"
+          className="field w-full"
         >
           <option value="READY_STOCK">Ready stock</option>
           <option value="MADE_TO_ORDER">Made to order</option>

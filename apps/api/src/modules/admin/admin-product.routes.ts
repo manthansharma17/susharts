@@ -5,6 +5,7 @@ import {
   deleteImageController,
   parseImageUpload,
   reorderImagesController,
+  replaceImageController,
   updateImageController,
   uploadImageController,
 } from './admin-image.controller.js';
@@ -33,10 +34,7 @@ adminProductRouter.post('/:id/archive', asyncHandler(archiveProductController));
 adminProductRouter.post('/:productId/variants', asyncHandler(createVariantController));
 adminProductRouter.patch('/variants/:variantId', asyncHandler(updateVariantController));
 adminProductRouter.delete('/variants/:variantId', asyncHandler(deleteVariantController));
-adminProductRouter.patch(
-  '/variants/:variantId/inventory',
-  asyncHandler(updateInventoryController),
-);
+adminProductRouter.patch('/variants/:variantId/inventory', asyncHandler(updateInventoryController));
 
 adminProductRouter.post(
   '/:productId/images',
@@ -45,4 +43,9 @@ adminProductRouter.post(
 );
 adminProductRouter.put('/:productId/images/order', asyncHandler(reorderImagesController));
 adminProductRouter.patch('/images/:imageId', asyncHandler(updateImageController));
+adminProductRouter.put(
+  '/images/:imageId/file',
+  parseImageUpload,
+  asyncHandler(replaceImageController),
+);
 adminProductRouter.delete('/images/:imageId', asyncHandler(deleteImageController));

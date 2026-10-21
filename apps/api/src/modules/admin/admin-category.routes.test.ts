@@ -44,19 +44,25 @@ beforeEach(() => {
 describe('POST /admin/categories', () => {
   it('401s without authentication and 403s for customers', async () => {
     expect((await request(appAs(null)).post('/admin/categories').send(body)).status).toBe(401);
-    expect((await request(appAs('CUSTOMER')).post('/admin/categories').send(body)).status).toBe(403);
+    expect((await request(appAs('CUSTOMER')).post('/admin/categories').send(body)).status).toBe(
+      403,
+    );
     expect(mockPrisma.category.create).not.toHaveBeenCalled();
   });
 
   it('creates a top-level category', async () => {
-    mockPrisma.category.create.mockImplementation(({ data }) => Promise.resolve({ id: 'c1', ...data }));
+    mockPrisma.category.create.mockImplementation(({ data }) =>
+      Promise.resolve({ id: 'c1', ...data }),
+    );
     const res = await request(appAs('ADMIN')).post('/admin/categories').send(body);
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({ name: 'Flowers', slug: 'flowers', parentId: null });
   });
 
   it('rejects an invalid slug', async () => {
-    const res = await request(appAs('ADMIN')).post('/admin/categories').send({ ...body, slug: 'Bad Slug' });
+    const res = await request(appAs('ADMIN'))
+      .post('/admin/categories')
+      .send({ ...body, slug: 'Bad Slug' });
     expect(res.status).toBe(400);
   });
 
@@ -69,7 +75,11 @@ describe('POST /admin/categories', () => {
   });
 
   it('rejects a third nesting level', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: PARENT_ID, parentId: 'root', isArchived: false });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: PARENT_ID,
+      parentId: 'root',
+      isArchived: false,
+    });
     const res = await request(appAs('ADMIN'))
       .post('/admin/categories')
       .send({ ...body, parentId: PARENT_ID });
@@ -79,11 +89,17 @@ describe('POST /admin/categories', () => {
 
   it('answers 409 for a duplicate slug', async () => {
     mockPrisma.category.create.mockRejectedValue(
-      Object.assign(new Error('Unique constraint failed'), { code: 'P2002', meta: { target: ['slug'] } }),
+      Object.assign(new Error('Unique constraint failed'), {
+        code: 'P2002',
+        meta: { target: ['slug'] },
+      }),
     );
     const res = await request(appAs('ADMIN')).post('/admin/categories').send(body);
     expect(res.status).toBe(409);
-    expect(res.body.error).toMatchObject({ code: 'CONFLICT', message: 'A record with this slug already exists' });
+    expect(res.body.error).toMatchObject({
+      code: 'CONFLICT',
+      message: 'A record with this slug already exists',
+    });
   });
 });
 
@@ -93,8 +109,26 @@ const OTHER_ID = '33333333-3333-4333-8333-333333333333';
 describe('GET /admin/categories', () => {
   it('returns a tree including archived categories with product counts', async () => {
     mockPrisma.category.findMany.mockResolvedValue([
-      { id: PARENT_ID, parentId: null, slug: 'a', name: 'A', description: null, position: 0, isArchived: false, _count: { products: 2 } },
-      { id: CAT_ID, parentId: PARENT_ID, slug: 'b', name: 'B', description: null, position: 0, isArchived: true, _count: { products: 0 } },
+      {
+        id: PARENT_ID,
+        parentId: null,
+        slug: 'a',
+        name: 'A',
+        description: null,
+        position: 0,
+        isArchived: false,
+        _count: { products: 2 },
+      },
+      {
+        id: CAT_ID,
+        parentId: PARENT_ID,
+        slug: 'b',
+        name: 'B',
+        description: null,
+        position: 0,
+        isArchived: true,
+        _count: { products: 0 },
+      },
     ]);
     const res = await request(appAs('ADMIN')).get('/admin/categories');
     expect(res.status).toBe(200);
@@ -110,7 +144,11 @@ describe('GET /admin/categories', () => {
 
 describe('PATCH /admin/categories/:id', () => {
   it('renames and archives', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, parentId: null, _count: { children: 0 } });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      parentId: null,
+      _count: { children: 0 },
+    });
     mockPrisma.category.update.mockResolvedValue({ id: CAT_ID });
     const res = await request(appAs('ADMIN'))
       .patch(`/admin/categories/${CAT_ID}`)
@@ -123,26 +161,45 @@ describe('PATCH /admin/categories/:id', () => {
   });
 
   it('refuses to nest a category that has its own sub-categories', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, parentId: null, _count: { children: 1 } });
-    const res = await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({ parentId: OTHER_ID });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      parentId: null,
+      _count: { children: 1 },
+    });
+    const res = await request(appAs('ADMIN'))
+      .patch(`/admin/categories/${CAT_ID}`)
+      .send({ parentId: OTHER_ID });
     expect(res.status).toBe(400);
     expect(mockPrisma.category.update).not.toHaveBeenCalled();
   });
 
   it('refuses to place a category inside itself', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, parentId: null, _count: { children: 0 } });
-    const res = await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({ parentId: CAT_ID });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      parentId: null,
+      _count: { children: 0 },
+    });
+    const res = await request(appAs('ADMIN'))
+      .patch(`/admin/categories/${CAT_ID}`)
+      .send({ parentId: CAT_ID });
     expect(res.status).toBe(400);
   });
 
   it('404s for unknown and malformed ids', async () => {
     mockPrisma.category.findUnique.mockResolvedValue(null);
-    expect((await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({ name: 'x' })).status).toBe(404);
-    expect((await request(appAs('ADMIN')).patch('/admin/categories/nope').send({ name: 'x' })).status).toBe(404);
+    expect(
+      (await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({ name: 'x' }))
+        .status,
+    ).toBe(404);
+    expect(
+      (await request(appAs('ADMIN')).patch('/admin/categories/nope').send({ name: 'x' })).status,
+    ).toBe(404);
   });
 
   it('rejects an empty body', async () => {
-    expect((await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({})).status).toBe(400);
+    expect(
+      (await request(appAs('ADMIN')).patch(`/admin/categories/${CAT_ID}`).send({})).status,
+    ).toBe(400);
   });
 });
 
@@ -163,25 +220,37 @@ describe('PUT /admin/categories/order', () => {
       .put('/admin/categories/order')
       .send({ parentId: null, categoryIds: [OTHER_ID, CAT_ID] });
     expect(res.status).toBe(204);
-    expect(mockPrisma.category.update).toHaveBeenNthCalledWith(1, { where: { id: OTHER_ID }, data: { position: 0 } });
+    expect(mockPrisma.category.update).toHaveBeenNthCalledWith(1, {
+      where: { id: OTHER_ID },
+      data: { position: 0 },
+    });
   });
 });
 
 describe('DELETE /admin/categories/:id', () => {
   it('409s when the category still has products', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, _count: { products: 3, children: 0 } });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      _count: { products: 3, children: 0 },
+    });
     const res = await request(appAs('ADMIN')).delete(`/admin/categories/${CAT_ID}`);
     expect(res.status).toBe(409);
     expect(mockPrisma.category.delete).not.toHaveBeenCalled();
   });
 
   it('409s when the category has sub-categories', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, _count: { products: 0, children: 1 } });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      _count: { products: 0, children: 1 },
+    });
     expect((await request(appAs('ADMIN')).delete(`/admin/categories/${CAT_ID}`)).status).toBe(409);
   });
 
   it('deletes an empty category', async () => {
-    mockPrisma.category.findUnique.mockResolvedValue({ id: CAT_ID, _count: { products: 0, children: 0 } });
+    mockPrisma.category.findUnique.mockResolvedValue({
+      id: CAT_ID,
+      _count: { products: 0, children: 0 },
+    });
     expect((await request(appAs('ADMIN')).delete(`/admin/categories/${CAT_ID}`)).status).toBe(204);
     expect(mockPrisma.category.delete).toHaveBeenCalledWith({ where: { id: CAT_ID } });
   });

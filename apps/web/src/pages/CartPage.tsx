@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FlowerIcon, HeartIcon } from '../components/Decor.js';
 import { ErrorMessage } from '../components/ErrorMessage.js';
+import { QuantityStepper } from '../components/QuantityStepper.js';
 import { PageSpinner, Spinner } from '../components/Spinner.js';
 import { useAuth } from '../lib/auth-context.js';
 import { useCart } from '../lib/cart-context.js';
@@ -30,7 +31,6 @@ function CartRow({ line }: { line: CartLine }) {
 
   const unavailable = line.issue === 'UNAVAILABLE';
   const max = maxFor(line);
-  const options = Array.from({ length: Math.max(max, line.quantity) }, (_, i) => i + 1);
 
   return (
     <li className={`flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ${line.issue ? 'ring-amber-200' : 'ring-blush-100'}`}>
@@ -78,22 +78,14 @@ function CartRow({ line }: { line: CartLine }) {
         <div className="mt-auto flex flex-wrap items-center gap-3 pt-3">
           {!unavailable && (
             <>
-              <label htmlFor={`qty-${line.variantId}`} className="sr-only">
-                Quantity
-              </label>
-              <select
-                id={`qty-${line.variantId}`}
+              <QuantityStepper
                 value={line.quantity}
+                max={max}
                 disabled={busy}
-                onChange={(e) => void run(() => setQuantity(line.variantId, Number(e.target.value)))}
-                className="field py-1 pr-8 text-sm"
-              >
-                {options.map((n) => (
-                  <option key={n} value={n} disabled={n > max}>
-                    Qty {n}
-                  </option>
-                ))}
-              </select>
+                label={`Quantity of ${line.product.name}`}
+                // If stock dropped below the cart quantity, "−" jumps straight to what's available.
+                onChange={(next) => void run(() => setQuantity(line.variantId, Math.min(next, max)))}
+              />
               <span className="text-xs text-cocoa-400">{formatInr(line.variant.priceInPaise)} each</span>
             </>
           )}

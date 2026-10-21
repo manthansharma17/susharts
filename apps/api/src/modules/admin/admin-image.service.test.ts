@@ -24,9 +24,13 @@ const mockCloudinary = {
 };
 vi.mock('../../lib/cloudinary.js', () => mockCloudinary);
 
-const { adminDeleteImage, adminReorderImages, adminUploadImage, detectImageType } = await import(
-  './admin-image.service.js'
-);
+const {
+  adminDeleteImage,
+  adminReorderImages,
+  adminReplaceImage,
+  adminUploadImage,
+  detectImageType,
+} = await import('./admin-image.service.js');
 
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
@@ -51,7 +55,9 @@ describe('detectImageType', () => {
 describe('adminUploadImage', () => {
   it('404s when the product does not exist', async () => {
     mockPrisma.product.findUnique.mockResolvedValue(null);
-    await expect(adminUploadImage('p1', { buffer: PNG }, null)).rejects.toMatchObject({ status: 404 });
+    await expect(adminUploadImage('p1', { buffer: PNG }, null)).rejects.toMatchObject({
+      status: 404,
+    });
     expect(mockCloudinary.uploadImage).not.toHaveBeenCalled();
   });
 
@@ -66,7 +72,9 @@ describe('adminUploadImage', () => {
   it('rejects uploads beyond the per-product image limit', async () => {
     mockPrisma.product.findUnique.mockResolvedValue({ id: 'p1' });
     mockPrisma.productImage.aggregate.mockResolvedValue({ _count: 10, _max: { position: 9 } });
-    await expect(adminUploadImage('p1', { buffer: PNG }, null)).rejects.toMatchObject({ status: 400 });
+    await expect(adminUploadImage('p1', { buffer: PNG }, null)).rejects.toMatchObject({
+      status: 400,
+    });
     expect(mockCloudinary.uploadImage).not.toHaveBeenCalled();
   });
 
@@ -74,7 +82,9 @@ describe('adminUploadImage', () => {
     mockPrisma.product.findUnique.mockResolvedValue({ id: 'p1' });
     mockPrisma.productImage.aggregate.mockResolvedValue({ _count: 2, _max: { position: 4 } });
     mockCloudinary.uploadImage.mockResolvedValue({ url: 'https://res.cloudinary.com/demo/x.png' });
-    mockPrisma.productImage.create.mockImplementation(({ data }) => Promise.resolve({ id: 'i1', ...data }));
+    mockPrisma.productImage.create.mockImplementation(({ data }) =>
+      Promise.resolve({ id: 'i1', ...data }),
+    );
 
     const image = await adminUploadImage('p1', { buffer: PNG }, 'A pink bunny');
 
@@ -110,7 +120,11 @@ describe('adminReorderImages', () => {
   it('rejects a list that does not match the product images exactly', async () => {
     mockPrisma.productImage.findMany.mockResolvedValue(ids.map((id) => ({ id })));
 
-    for (const imageIds of [[ids[0]!], [ids[0]!, ids[0]!], [ids[0]!, '33333333-3333-4333-8333-333333333333']]) {
+    for (const imageIds of [
+      [ids[0]!],
+      [ids[0]!, ids[0]!],
+      [ids[0]!, '33333333-3333-4333-8333-333333333333'],
+    ]) {
       await expect(adminReorderImages('p1', { imageIds })).rejects.toMatchObject({ status: 400 });
     }
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
@@ -119,7 +133,9 @@ describe('adminReorderImages', () => {
   it('404s for a product that does not exist', async () => {
     mockPrisma.productImage.findMany.mockResolvedValue([]);
     mockPrisma.product.findUnique.mockResolvedValue(null);
-    await expect(adminReorderImages('p1', { imageIds: [ids[0]!] })).rejects.toMatchObject({ status: 404 });
+    await expect(adminReorderImages('p1', { imageIds: [ids[0]!] })).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it('writes positions in the requested order', async () => {
@@ -128,8 +144,14 @@ describe('adminReorderImages', () => {
 
     await adminReorderImages('p1', { imageIds: [ids[1]!, ids[0]!] });
 
-    expect(mockPrisma.productImage.update).toHaveBeenNthCalledWith(1, { where: { id: ids[1] }, data: { position: 0 } });
-    expect(mockPrisma.productImage.update).toHaveBeenNthCalledWith(2, { where: { id: ids[0] }, data: { position: 1 } });
+    expect(mockPrisma.productImage.update).toHaveBeenNthCalledWith(1, {
+      where: { id: ids[1] },
+      data: { position: 0 },
+    });
+    expect(mockPrisma.productImage.update).toHaveBeenNthCalledWith(2, {
+      where: { id: ids[0] },
+      data: { position: 1 },
+    });
   });
 });
 
@@ -157,7 +179,10 @@ describe('adminDeleteImage', () => {
 
     expect(tx.productImage.delete).toHaveBeenCalledWith({ where: { id: 'i1' } });
     expect(tx.productImage.update).toHaveBeenCalledOnce();
-    expect(tx.productImage.update).toHaveBeenCalledWith({ where: { id: 'b' }, data: { position: 1 } });
+    expect(tx.productImage.update).toHaveBeenCalledWith({
+      where: { id: 'b' },
+      data: { position: 1 },
+    });
     expect(mockCloudinary.destroyImage).toHaveBeenCalledWith('susharts/products/p1/abc');
   });
 
@@ -167,5 +192,55 @@ describe('adminDeleteImage', () => {
     mockCloudinary.destroyImage.mockRejectedValue(new Error('cloudinary down'));
 
     await expect(adminDeleteImage('i1')).resolves.toBeUndefined();
+  });
+});
+
+describe('adminReplaceImage', () => {
+  it('404s for a missing image without uploading', async () => {
+    mockPrisma.productImage.findUnique.mockResolvedValue(null);
+    await expect(adminReplaceImage('i1', { buffer: PNG })).rejects.toMatchObject({ status: 404 });
+    expect(mockCloudinary.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-image bytes', async () => {
+    mockPrisma.productImage.findUnique.mockResolvedValue({ id: 'i1', productId: 'p1', url: 'old' });
+    await expect(adminReplaceImage('i1', { buffer: Buffer.from('nope') })).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(mockCloudinary.uploadImage).not.toHaveBeenCalled();
+  });
+
+  it('uploads the new file, points the row at it, then deletes the old asset', async () => {
+    mockPrisma.productImage.findUnique.mockResolvedValue({
+      id: 'i1',
+      productId: 'p1',
+      url: 'old-url',
+    });
+    mockCloudinary.uploadImage.mockResolvedValue({ url: 'new-url' });
+    mockPrisma.productImage.update.mockResolvedValue({ id: 'i1', url: 'new-url', position: 2 });
+
+    const result = await adminReplaceImage('i1', { buffer: JPEG });
+
+    expect(mockCloudinary.uploadImage.mock.calls[0]![2]).toMatch(/^susharts\/products\/p1\//);
+    expect(mockPrisma.productImage.update).toHaveBeenCalledWith({
+      where: { id: 'i1' },
+      data: { url: 'new-url' },
+    });
+    expect(mockCloudinary.publicIdFromUrl).toHaveBeenCalledWith('old-url', 'demo');
+    expect(result).toMatchObject({ url: 'new-url', position: 2 });
+  });
+
+  it('removes the new asset and keeps the old one if saving fails', async () => {
+    mockPrisma.productImage.findUnique.mockResolvedValue({
+      id: 'i1',
+      productId: 'p1',
+      url: 'old-url',
+    });
+    mockCloudinary.uploadImage.mockResolvedValue({ url: 'new-url' });
+    mockPrisma.productImage.update.mockRejectedValue(new Error('db down'));
+
+    await expect(adminReplaceImage('i1', { buffer: PNG })).rejects.toThrow('db down');
+    expect(mockCloudinary.publicIdFromUrl).toHaveBeenCalledWith('new-url', 'demo');
+    expect(mockCloudinary.publicIdFromUrl).not.toHaveBeenCalledWith('old-url', 'demo');
   });
 });

@@ -7,6 +7,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { EmptyState } from '../components/EmptyState.js';
+import { ImageCropper, type CropResult } from '../components/ImageCropper.js';
 import { ErrorMessage } from '../components/ErrorMessage.js';
 import { PageSpinner, Spinner } from '../components/Spinner.js';
 import { useApi } from '../hooks/use-api.js';
@@ -21,9 +22,19 @@ interface AdminProduct {
 }
 
 const MAX_MB = MAX_IMAGE_BYTES / 1024 / 1024;
+const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
+
+type CropMode = 'upload' | 'edit' | 'replace';
+const CONFIRM_LABELS: Record<CropMode, string> = {
+  upload: 'Save & upload',
+  edit: 'Save changes',
+  replace: 'Save & replace',
+};
 
 function errorText(err: unknown): string {
-  return err instanceof ApiRequestError || err instanceof Error ? err.message : 'Something went wrong';
+  return err instanceof ApiRequestError || err instanceof Error
+    ? err.message
+    : 'Something went wrong';
 }
 
 function ImageCard({
@@ -34,6 +45,8 @@ function ImageCard({
   onMove,
   onDelete,
   onSaveAlt,
+  onEdit,
+  onReplace,
 }: {
   image: ProductImage;
   index: number;
@@ -42,7 +55,10 @@ function ImageCard({
   onMove: (from: number, to: number) => void;
   onDelete: (image: ProductImage) => void;
   onSaveAlt: (image: ProductImage, altText: string) => Promise<void>;
+  onEdit: (image: ProductImage) => void;
+  onReplace: (image: ProductImage, file: File) => void;
 }) {
+  const replaceInput = useRef<HTMLInputElement>(null);
   const [alt, setAlt] = useState(image.altText ?? '');
   const [saving, setSaving] = useState(false);
   const dirty = alt.trim() !== (image.altText ?? '');
@@ -75,11 +91,15 @@ function ImageCard({
             placeholder="Describe the image"
             className="field min-w-0 flex-1 py-1.5 text-xs"
           />
-          <button type="submit" disabled={!dirty || saving} className="btn-secondary px-3 py-1 text-xs">
+          <button
+            type="submit"
+            disabled={!dirty || saving}
+            className="btn-secondary px-3 py-1 text-xs"
+          >
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 pt-1">
           <div className="flex gap-1">
             <button
               type="button"
@@ -99,6 +119,37 @@ function ImageCard({
             >
               →
             </button>
+          </div>
+          <div className="flex gap-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onEdit(image)}
+              className="btn-secondary px-3 py-1 text-xs"
+            >
+              ✎ Edit
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => replaceInput.current?.click()}
+              className="btn-secondary px-3 py-1 text-xs"
+            >
+              ⇄ Replace
+            </button>
+            <input
+              ref={replaceInput}
+              type="file"
+              accept={ALLOWED_IMAGE_TYPES.join(',')}
+              className="sr-only"
+              tabIndex={-1}
+              aria-label={`Replace photo ${index + 1}`}
+              onChange={(e) => {
+                const picked = e.target.files?.[0];
+                e.target.value = '';
+                if (picked) onReplace(image, picked);
+              }}
+            />
           </div>
           <button
             type="button"
@@ -124,6 +175,15 @@ export function AdminProductImagesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [uploadAlt, setUploadAlt] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const [crop, setCrop] = useState<{
+    file: File;
+    progress: string;
+    mode: CropMode;
+    resolve: (r: CropResult) => void;
+  } | null>(null);
+
+  const askCrop = (file: File, progress: string, mode: CropMode = 'upload') =>
+    new Promise<CropResult>((resolve) => setCrop({ file, progress, mode, resolve }));
 
   useEffect(() => {
     if (product.data) setImages(product.data.images);
@@ -157,20 +217,35 @@ export function AdminProductImagesPage() {
     setActionError(null);
     const selected = Array.from(files);
     if (selected.length > remaining) {
-      setActionError(`You can add ${remaining} more image${remaining === 1 ? '' : 's'} to this product.`);
+      setActionError(
+        `You can add ${remaining} more image${remaining === 1 ? '' : 's'} to this product.`,
+      );
       return;
     }
+    // Originals may be larger than the upload limit, since cropping re-compresses them.
     const invalid = selected.find(
-      (f) => !(ALLOWED_IMAGE_TYPES as readonly string[]).includes(f.type) || f.size > MAX_IMAGE_BYTES,
+      (f) =>
+        !(ALLOWED_IMAGE_TYPES as readonly string[]).includes(f.type) || f.size > MAX_SOURCE_BYTES,
     );
     if (invalid) {
-      setActionError(`"${invalid.name}" must be a JPEG, PNG, or WebP image of ${MAX_MB} MB or less.`);
+      setActionError(
+        `"${invalid.name}" must be a JPEG, PNG, or WebP image under ${MAX_SOURCE_BYTES / 1024 / 1024} MB.`,
+      );
+      if (fileInput.current) fileInput.current.value = '';
       return;
     }
 
     setBusy(true);
     try {
-      for (const [i, file] of selected.entries()) {
+      for (const [i, original] of selected.entries()) {
+        const result = await askCrop(original, `Photo ${i + 1} of ${selected.length}`);
+        setCrop(null);
+        if (result.kind === 'cancel') continue;
+        const file = result.kind === 'edited' ? result.file : original;
+        if (file.size > MAX_IMAGE_BYTES) {
+          setActionError(`"${original.name}" is over ${MAX_MB} MB. Crop it to make it smaller.`);
+          continue;
+        }
         setStatus(`Uploading ${i + 1} of ${selected.length}…`);
         const body = new FormData();
         body.append('image', file);
@@ -201,10 +276,13 @@ export function AdminProductImagesPage() {
     setBusy(true);
     setActionError(null);
     try {
-      const saved = await apiFetch<ProductImage[]>(`/api/v1/admin/products/${productId}/images/order`, {
-        method: 'PUT',
-        body: JSON.stringify({ imageIds: next.map((img) => img.id) }),
-      });
+      const saved = await apiFetch<ProductImage[]>(
+        `/api/v1/admin/products/${productId}/images/order`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ imageIds: next.map((img) => img.id) }),
+        },
+      );
       setImages(saved);
     } catch (err) {
       setImages(previous);
@@ -227,6 +305,88 @@ export function AdminProductImagesPage() {
       setActionError(errorText(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleEdit(image: ProductImage) {
+    setActionError(null);
+    setBusy(true);
+    try {
+      setStatus('Opening photo…');
+      let source: File;
+      try {
+        const response = await fetch(image.url);
+        if (!response.ok) throw new Error(String(response.status));
+        const blob = await response.blob();
+        source = new File([blob], 'photo', { type: blob.type || 'image/jpeg' });
+      } catch {
+        setActionError(
+          'Could not open this photo for editing. Check your connection and try again.',
+        );
+        return;
+      }
+      setStatus(null);
+
+      const result = await askCrop(
+        source,
+        `Editing photo #${images.findIndex((i) => i.id === image.id) + 1}`,
+        'edit',
+      );
+      setCrop(null);
+      if (result.kind !== 'edited') return;
+
+      setStatus('Saving edited photo…');
+      await saveFile(image, result.file);
+    } catch (err) {
+      setActionError(errorText(err));
+    } finally {
+      setBusy(false);
+      setStatus(null);
+    }
+  }
+
+  async function saveFile(image: ProductImage, file: File) {
+    const body = new FormData();
+    body.append('image', file);
+    const updated = await apiFetch<ProductImage>(`/api/v1/admin/products/images/${image.id}/file`, {
+      method: 'PUT',
+      body,
+    });
+    setImages((prev) => prev.map((img) => (img.id === updated.id ? updated : img)));
+  }
+
+  async function handleReplace(image: ProductImage, picked: File) {
+    setActionError(null);
+    if (
+      !(ALLOWED_IMAGE_TYPES as readonly string[]).includes(picked.type) ||
+      picked.size > MAX_SOURCE_BYTES
+    ) {
+      setActionError(
+        `"${picked.name}" must be a JPEG, PNG, or WebP image under ${MAX_SOURCE_BYTES / 1024 / 1024} MB.`,
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await askCrop(
+        picked,
+        `Replacing photo #${images.findIndex((i) => i.id === image.id) + 1}`,
+        'replace',
+      );
+      setCrop(null);
+      if (result.kind === 'cancel') return;
+      const file = result.kind === 'edited' ? result.file : picked;
+      if (file.size > MAX_IMAGE_BYTES) {
+        setActionError(`"${picked.name}" is over ${MAX_MB} MB. Crop it to make it smaller.`);
+        return;
+      }
+      setStatus('Replacing photo…');
+      await saveFile(image, file);
+    } catch (err) {
+      setActionError(errorText(err));
+    } finally {
+      setBusy(false);
+      setStatus(null);
     }
   }
 
@@ -253,8 +413,8 @@ export function AdminProductImagesPage() {
         <div>
           <h1 className="font-display text-3xl font-semibold text-cocoa-800">Product images</h1>
           <p className="mt-1 text-sm text-cocoa-500">
-            {product.data.name} · {images.length} of {MAX_IMAGES_PER_PRODUCT} images · the first image is
-            shown on product cards.
+            {product.data.name} · {images.length} of {MAX_IMAGES_PER_PRODUCT} images · the first
+            image is shown on product cards.
           </p>
         </div>
         <Link to={`/admin/products/${productId}`} className="btn-secondary">
@@ -282,7 +442,9 @@ export function AdminProductImagesPage() {
               className="field mt-1 w-full"
             />
           </div>
-          <label className={`btn-primary cursor-pointer ${busy || remaining <= 0 ? 'pointer-events-none opacity-60' : ''}`}>
+          <label
+            className={`btn-primary cursor-pointer ${busy || remaining <= 0 ? 'pointer-events-none opacity-60' : ''}`}
+          >
             {busy && status ? <Spinner className="h-4 w-4 border-white/40 border-t-white" /> : null}
             {status ?? 'Choose images'}
             <input
@@ -299,7 +461,8 @@ export function AdminProductImagesPage() {
           </label>
         </div>
         <p className="mt-3 text-xs text-cocoa-400">
-          JPEG, PNG, or WebP · up to {MAX_MB} MB each
+          JPEG, PNG, or WebP · you can crop and adjust each photo before it uploads · up to {MAX_MB}{' '}
+          MB after editing
           {remaining <= 0 ? ' · image limit reached' : ''}
         </p>
       </section>
@@ -311,7 +474,9 @@ export function AdminProductImagesPage() {
       )}
 
       {images.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-cocoa-400">No images yet. Upload the first one above.</p>
+        <p className="mt-10 text-center text-sm text-cocoa-400">
+          No images yet. Upload the first one above.
+        </p>
       ) : (
         <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {images.map((image, index) => (
@@ -324,9 +489,22 @@ export function AdminProductImagesPage() {
               onMove={(from, to) => void handleMove(from, to)}
               onDelete={(img) => void handleDelete(img)}
               onSaveAlt={handleSaveAlt}
+              onEdit={(img) => void handleEdit(img)}
+              onReplace={(img, file) => void handleReplace(img, file)}
             />
           ))}
         </ul>
+      )}
+
+      {crop && (
+        <ImageCropper
+          key={crop.file.name + crop.progress}
+          file={crop.file}
+          progress={crop.progress}
+          allowOriginal={crop.mode !== 'edit'}
+          confirmLabel={CONFIRM_LABELS[crop.mode]}
+          onDone={crop.resolve}
+        />
       )}
     </div>
   );

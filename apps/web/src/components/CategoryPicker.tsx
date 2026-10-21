@@ -52,7 +52,7 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="field min-w-0 flex-1 pr-8"
+          className="field min-w-0 flex-1"
           disabled={categories.loading}
         >
           <option value="">{categories.loading ? 'Loading…' : 'Choose a category'}</option>
@@ -106,7 +106,7 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
                 id={`${id}-new-parent`}
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
-                className="field mt-1 w-full pr-8"
+                className="field mt-1 w-full"
               >
                 <option value="">None — main category</option>
                 {roots.map((root) => (

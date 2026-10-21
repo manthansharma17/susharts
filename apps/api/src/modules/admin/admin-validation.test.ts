@@ -92,15 +92,11 @@ describe('createVariantSchema', () => {
   });
 
   it('rejects zero price', () => {
-    expect(() =>
-      createVariantSchema.parse({ sku: 'SKU-001', priceInPaise: 0 }),
-    ).toThrow();
+    expect(() => createVariantSchema.parse({ sku: 'SKU-001', priceInPaise: 0 })).toThrow();
   });
 
   it('rejects negative price', () => {
-    expect(() =>
-      createVariantSchema.parse({ sku: 'SKU-001', priceInPaise: -100 }),
-    ).toThrow();
+    expect(() => createVariantSchema.parse({ sku: 'SKU-001', priceInPaise: -100 })).toThrow();
   });
 });
 

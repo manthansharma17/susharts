@@ -35,15 +35,11 @@ describe('createProductSchema', () => {
   });
 
   it('rejects invalid categoryId', () => {
-    expect(() =>
-      createProductSchema.parse({ ...validInput, categoryId: 'not-a-uuid' }),
-    ).toThrow();
+    expect(() => createProductSchema.parse({ ...validInput, categoryId: 'not-a-uuid' })).toThrow();
   });
 
   it('rejects metaTitle over 70 chars', () => {
-    expect(() =>
-      createProductSchema.parse({ ...validInput, metaTitle: 'a'.repeat(71) }),
-    ).toThrow();
+    expect(() => createProductSchema.parse({ ...validInput, metaTitle: 'a'.repeat(71) })).toThrow();
   });
 
   it('rejects metaDescription over 160 chars', () => {
@@ -82,9 +78,7 @@ describe('createVariantSchema', () => {
   });
 
   it('rejects negative stockQuantity', () => {
-    expect(() =>
-      createVariantSchema.parse({ ...validInput, stockQuantity: -1 }),
-    ).toThrow();
+    expect(() => createVariantSchema.parse({ ...validInput, stockQuantity: -1 })).toThrow();
   });
 });
 

@@ -12,6 +12,7 @@ const mockService = {
   adminUpdateImage: vi.fn(),
   adminReorderImages: vi.fn(),
   adminDeleteImage: vi.fn(),
+  adminReplaceImage: vi.fn(),
 };
 vi.mock('./admin-image.service.js', () => mockService);
 
@@ -96,7 +97,9 @@ describe('POST /admin/products/:productId/images', () => {
 
 describe('other image routes', () => {
   it('validates the reorder body', async () => {
-    const res = await request(appAs('ADMIN')).put(`${url}/order`).send({ imageIds: ['nope'] });
+    const res = await request(appAs('ADMIN'))
+      .put(`${url}/order`)
+      .send({ imageIds: ['nope'] });
     expect(res.status).toBe(400);
     expect(mockService.adminReorderImages).not.toHaveBeenCalled();
   });
@@ -132,5 +135,28 @@ describe('malformed ids', () => {
     const res = await request(appAs('ADMIN')).get('/admin/products/:id');
     expect(res.status).toBe(404);
     expect(res.body.error.message).toBe('Product not found');
+  });
+});
+
+describe('PUT /admin/products/images/:imageId/file', () => {
+  const path = `/admin/products/images/${PRODUCT_ID}/file`;
+
+  it('403s for customers', async () => {
+    const res = await request(appAs('CUSTOMER'))
+      .put(path)
+      .attach('image', PNG, { filename: 'a.png', contentType: 'image/png' });
+    expect(res.status).toBe(403);
+  });
+
+  it('replaces the file for admins', async () => {
+    mockService.adminReplaceImage.mockResolvedValue({ id: PRODUCT_ID });
+    const res = await request(appAs('ADMIN'))
+      .put(path)
+      .attach('image', PNG, { filename: 'a.png', contentType: 'image/png' });
+    expect(res.status).toBe(200);
+  });
+
+  it('400s without a file', async () => {
+    expect((await request(appAs('ADMIN')).put(path)).status).toBe(400);
   });
 });

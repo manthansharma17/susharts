@@ -22,7 +22,8 @@ async function assertValidParent(parentId: string, childId?: string) {
   if (parentId === childId) throw HttpError.badRequest('A category cannot be inside itself');
   const parent = await prisma.category.findUnique({ where: { id: parentId } });
   if (!parent) throw HttpError.badRequest('Parent category not found');
-  if (parent.parentId) throw HttpError.badRequest('Sub-categories cannot have their own sub-categories');
+  if (parent.parentId)
+    throw HttpError.badRequest('Sub-categories cannot have their own sub-categories');
 }
 
 async function nextPosition(parentId: string | null): Promise<number> {
@@ -44,7 +45,10 @@ export async function adminListCategories(): Promise<AdminCategoryNode[]> {
       _count: { select: { products: true } },
     },
   });
-  const flat: AdminCategory[] = rows.map(({ _count, ...row }) => ({ ...row, productCount: _count.products }));
+  const flat: AdminCategory[] = rows.map(({ _count, ...row }) => ({
+    ...row,
+    productCount: _count.products,
+  }));
   return flat
     .filter((c) => c.parentId === null)
     .map((root) => ({ ...root, children: flat.filter((c) => c.parentId === root.id) }));
@@ -71,7 +75,9 @@ export async function adminUpdateCategory(id: string, input: UpdateCategoryInput
   if (moving) {
     if (input.parentId) {
       if (existing._count.children > 0) {
-        throw HttpError.badRequest('Move or delete its sub-categories before placing this inside another category');
+        throw HttpError.badRequest(
+          'Move or delete its sub-categories before placing this inside another category',
+        );
       }
       await assertValidParent(input.parentId, id);
     }
@@ -82,7 +88,10 @@ export async function adminUpdateCategory(id: string, input: UpdateCategoryInput
 }
 
 export async function adminReorderCategories(input: ReorderCategoriesInput) {
-  const siblings = await prisma.category.findMany({ where: { parentId: input.parentId }, select: { id: true } });
+  const siblings = await prisma.category.findMany({
+    where: { parentId: input.parentId },
+    select: { id: true },
+  });
   const current = new Set(siblings.map((s) => s.id));
   const requested = new Set(input.categoryIds);
   const sameSet =
@@ -93,7 +102,9 @@ export async function adminReorderCategories(input: ReorderCategoriesInput) {
     throw HttpError.badRequest('categoryIds must list every category at this level exactly once');
   }
   await prisma.$transaction(
-    input.categoryIds.map((id, position) => prisma.category.update({ where: { id }, data: { position } })),
+    input.categoryIds.map((id, position) =>
+      prisma.category.update({ where: { id }, data: { position } }),
+    ),
   );
 }
 

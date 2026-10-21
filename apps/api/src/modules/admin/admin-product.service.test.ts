@@ -62,9 +62,9 @@ describe('adminCreateProduct', () => {
   it('throws 400 when category does not exist', async () => {
     mockPrisma.category.findUnique.mockResolvedValue(null);
 
-    await expect(
-      adminCreateProduct({ ...validProduct, categoryId: 'bad-id' }),
-    ).rejects.toThrow('Category not found');
+    await expect(adminCreateProduct({ ...validProduct, categoryId: 'bad-id' })).rejects.toThrow(
+      'Category not found',
+    );
   });
 });
 
@@ -82,18 +82,16 @@ describe('adminUpdateProduct', () => {
   it('throws 404 when product does not exist', async () => {
     mockPrisma.product.findUnique.mockResolvedValue(null);
 
-    await expect(adminUpdateProduct('bad-id', { name: 'X' })).rejects.toThrow(
-      'Product not found',
-    );
+    await expect(adminUpdateProduct('bad-id', { name: 'X' })).rejects.toThrow('Product not found');
   });
 
   it('validates category exists when updating categoryId', async () => {
     mockPrisma.product.findUnique.mockResolvedValue({ id: 'prod-1' });
     mockPrisma.category.findUnique.mockResolvedValue(null);
 
-    await expect(
-      adminUpdateProduct('prod-1', { categoryId: 'bad-cat' }),
-    ).rejects.toThrow('Category not found');
+    await expect(adminUpdateProduct('prod-1', { categoryId: 'bad-cat' })).rejects.toThrow(
+      'Category not found',
+    );
   });
 });
 
@@ -161,9 +159,7 @@ describe('adminCreateVariant', () => {
   it('throws 404 when product does not exist', async () => {
     mockPrisma.product.findUnique.mockResolvedValue(null);
 
-    await expect(
-      adminCreateVariant('bad-id', validVariant),
-    ).rejects.toThrow('Product not found');
+    await expect(adminCreateVariant('bad-id', validVariant)).rejects.toThrow('Product not found');
   });
 });
 
@@ -180,9 +176,7 @@ describe('adminUpdateVariant', () => {
 
   it('throws 404 when variant does not exist', async () => {
     mockPrisma.productVariant.findUnique.mockResolvedValue(null);
-    await expect(adminUpdateVariant('bad-id', { label: 'X' })).rejects.toThrow(
-      'Variant not found',
-    );
+    await expect(adminUpdateVariant('bad-id', { label: 'X' })).rejects.toThrow('Variant not found');
   });
 });
 
@@ -239,9 +233,9 @@ describe('adminUpdateInventory', () => {
 
   it('throws 404 when variant does not exist', async () => {
     mockPrisma.productVariant.findUnique.mockResolvedValue(null);
-    await expect(
-      adminUpdateInventory('bad-id', { stockQuantity: 10 }),
-    ).rejects.toThrow('Variant not found');
+    await expect(adminUpdateInventory('bad-id', { stockQuantity: 10 })).rejects.toThrow(
+      'Variant not found',
+    );
   });
 });
 

@@ -74,7 +74,7 @@ export function AdminDashboardPage() {
           aria-label="Status"
           value={status}
           onChange={(e) => update('status', e.target.value)}
-          className="field pr-8"
+          className="field"
         >
           <option value="">All statuses</option>
           {PRODUCT_STATUSES.map((s) => (

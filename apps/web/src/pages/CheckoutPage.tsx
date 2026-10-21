@@ -345,7 +345,7 @@ export function CheckoutPage() {
                   autoComplete="address-level1"
                   value={form.state}
                   onChange={(e) => set('state')(e.target.value)}
-                  className="field w-full pr-8"
+                  className="field w-full"
                 >
                   <option value="">Choose a state</option>
                   {INDIAN_STATES.map((s) => (

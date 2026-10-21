@@ -1,76 +1,36 @@
 import type { ProductDetail, ProductVariant } from '@susharts/shared';
 import { formatInr, MAX_CART_LINE_QUANTITY } from '@susharts/shared';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Breadcrumbs } from '../components/Breadcrumbs.js';
 import { EmptyState } from '../components/EmptyState.js';
 import { ErrorMessage } from '../components/ErrorMessage.js';
 import { Price } from '../components/Price.js';
+import { ProductGallery } from '../components/ProductGallery.js';
+import { QuantityStepper } from '../components/QuantityStepper.js';
 import { PageSpinner } from '../components/Spinner.js';
 import { useApi } from '../hooks/use-api.js';
 import { useCart } from '../lib/cart-context.js';
 
-function ImageGallery({ images, productName }: { images: ProductDetail['images']; productName: string }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const sorted = [...images].sort((a, b) => a.position - b.position);
-  const current = sorted[selectedIndex];
-
-  if (sorted.length === 0) {
-    return (
-      <div className="flex aspect-square items-center justify-center rounded-2xl bg-blush-100">
-        <svg className="h-16 w-16 text-blush-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-        </svg>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="overflow-hidden rounded-2xl bg-blush-100">
-        {current && (
-          <img
-            src={current.url}
-            alt={current.altText ?? productName}
-            className="aspect-square w-full object-cover"
-          />
-        )}
-      </div>
-      {sorted.length > 1 && (
-        <div className="mt-3 flex gap-2 overflow-x-auto">
-          {sorted.map((img, i) => (
-            <button
-              key={img.id}
-              type="button"
-              onClick={() => setSelectedIndex(i)}
-              className={`h-16 w-16 flex-shrink-0 overflow-hidden rounded border-2 transition ${
-                i === selectedIndex ? 'border-blush-500' : 'border-blush-200 hover:border-blush-400'
-              }`}
-              aria-label={`View image ${i + 1}`}
-            >
-              <img src={img.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function AddToCart({ variant }: { variant: ProductVariant }) {
   const { addItem } = useCart();
+  const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<false | 'add' | 'buy'>(false);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const max = Math.min(MAX_CART_LINE_QUANTITY, variant.stockQuantity ?? MAX_CART_LINE_QUANTITY);
   const soldOut = !variant.isAvailable || max < 1;
 
-  async function add() {
-    setBusy(true);
+  async function add(buyNow: boolean) {
+    setBusy(buyNow ? 'buy' : 'add');
     setResult(null);
     try {
       await addItem(variant.id, quantity);
+      if (buyNow) {
+        navigate('/checkout');
+        return;
+      }
       setResult({ ok: true, text: 'Added to your cart' });
     } catch (err) {
       setResult({ ok: false, text: err instanceof Error ? err.message : 'Could not add to cart' });
@@ -84,31 +44,33 @@ function AddToCart({ variant }: { variant: ProductVariant }) {
       <div className="flex flex-wrap items-center gap-3">
         {!soldOut && (
           <>
-            <label htmlFor="add-qty" className="sr-only">
-              Quantity
-            </label>
-            <select
-              id="add-qty"
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              className="field py-2.5 pr-8"
-            >
-              {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
-                  Qty {n}
-                </option>
-              ))}
-            </select>
+            <QuantityStepper value={quantity} max={max} onChange={setQuantity} disabled={Boolean(busy)} />
           </>
         )}
-        <button
-          type="button"
-          disabled={soldOut || busy}
-          onClick={() => void add()}
-          className="btn-primary flex-1 px-8 py-3 text-base sm:flex-none"
-        >
-          {soldOut ? 'Sold out' : busy ? 'Adding…' : 'Add to cart'}
-        </button>
+        {soldOut ? (
+          <button type="button" disabled className="btn-primary flex-1 px-8 py-3 text-base sm:flex-none">
+            Sold out
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => void add(false)}
+              className="btn-secondary flex-1 px-6 py-3 text-base sm:flex-none"
+            >
+              {busy === 'add' ? 'Adding…' : 'Add to cart'}
+            </button>
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => void add(true)}
+              className="btn-primary flex-1 px-8 py-3 text-base sm:flex-none"
+            >
+              {busy === 'buy' ? 'Please wait…' : 'Buy now'}
+            </button>
+          </>
+        )}
       </div>
       {result && (
         <p role="status" className={`mt-3 text-sm ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
@@ -244,7 +206,7 @@ export function ProductDetailPage() {
 
       <div className="mt-6 grid gap-8 lg:grid-cols-2">
         {/* Images */}
-        <ImageGallery images={product.images} productName={product.name} />
+        <ProductGallery images={product.images} productName={product.name} />
 
         {/* Details */}
         <div>

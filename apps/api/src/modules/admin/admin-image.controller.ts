@@ -11,6 +11,7 @@ import { HttpError } from '../../lib/http-error.js';
 import {
   adminDeleteImage,
   adminReorderImages,
+  adminReplaceImage,
   adminUpdateImage,
   adminUploadImage,
 } from './admin-image.service.js';
@@ -30,7 +31,11 @@ export const parseImageUpload: RequestHandler = (req, res, next) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         next(
-          new HttpError(413, 'FILE_TOO_LARGE', `Image must be ${MAX_IMAGE_BYTES / 1024 / 1024} MB or smaller`),
+          new HttpError(
+            413,
+            'FILE_TOO_LARGE',
+            `Image must be ${MAX_IMAGE_BYTES / 1024 / 1024} MB or smaller`,
+          ),
         );
         return;
       }
@@ -49,6 +54,14 @@ export async function uploadImageController(req: Request, res: Response): Promis
   const altText = imageAltTextSchema.parse(req.body?.altText ?? null);
   const image = await adminUploadImage(productId, req.file, altText);
   res.status(201).json(image);
+}
+
+export async function replaceImageController(req: Request, res: Response): Promise<void> {
+  const imageId = parseId(req.params.imageId, 'Image');
+  if (!req.file) {
+    throw HttpError.badRequest('An "image" file field of type JPEG, PNG, or WebP is required');
+  }
+  res.json(await adminReplaceImage(imageId, req.file));
 }
 
 export async function updateImageController(req: Request, res: Response): Promise<void> {

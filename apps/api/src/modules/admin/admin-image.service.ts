@@ -85,6 +85,28 @@ export async function adminUploadImage(
   }
 }
 
+/** Swaps the file behind an image (e.g. after cropping), keeping its id, position, and alt text. */
+export async function adminReplaceImage(imageId: string, file: { buffer: Buffer }) {
+  const image = await prisma.productImage.findUnique({ where: { id: imageId } });
+  if (!image) throw HttpError.notFound('Image not found');
+
+  const type = detectImageType(file.buffer);
+  if (!type) throw HttpError.badRequest('File must be a JPEG, PNG, or WebP image');
+
+  const publicId = `${CLOUDINARY_ROOT_FOLDER}/products/${image.productId}/${randomUUID()}`;
+  const { url } = await uploadImage(file.buffer, type, publicId);
+
+  let updated;
+  try {
+    updated = await prisma.productImage.update({ where: { id: imageId }, data: { url } });
+  } catch (err) {
+    await deleteFromCloudinary(url);
+    throw err;
+  }
+  await deleteFromCloudinary(image.url);
+  return updated;
+}
+
 export async function adminUpdateImage(imageId: string, input: UpdateImageInput) {
   const image = await prisma.productImage.findUnique({ where: { id: imageId } });
   if (!image) throw HttpError.notFound('Image not found');
