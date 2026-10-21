@@ -15,7 +15,9 @@
     "@susharts/shared": "workspace:*",
     "cors": "2.8.5",
     "express": "4.21.2",
+    "firebase-admin": "13.0.2",
     "helmet": "8.0.0",
+    "multer": "2.4.0",
     "pino": "9.6.0",
     "pino-http": "10.4.0",
     "zod": "3.24.1"
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/cors": "2.8.17",
     "@types/express": "4.17.21",
+    "@types/multer": "2.0.0",
     "@types/node": "22.10.5",
     "@types/supertest": "6.0.2",
     "supertest": "7.0.0",

@@ -22,6 +22,22 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
+  // Prisma unique-constraint violation (e.g. duplicate slug or SKU).
+  if (typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'P2002') {
+    const target = (err as { meta?: { target?: unknown } }).meta?.target;
+    const fields = Array.isArray(target) ? target.map(String) : [];
+    res.status(409).json({
+      error: {
+        code: 'CONFLICT',
+        message: fields.length
+          ? `A record with this ${fields.join(', ')} already exists`
+          : 'A record with these values already exists',
+        details: { fields },
+      },
+    });
+    return;
+  }
+
   logger.error({ err }, 'Unhandled error');
   res
     .status(500)

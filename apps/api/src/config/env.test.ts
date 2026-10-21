@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from './env.js';
 
-const base = { DATABASE_URL: 'postgresql://user:pass@localhost:5432/susharts' };
+const base = {
+  DATABASE_URL: 'postgresql://user:pass@localhost:5432/susharts',
+  FIREBASE_PROJECT_ID: 'test-project',
+  FIREBASE_CLIENT_EMAIL: 'test@test-project.iam.gserviceaccount.com',
+  FIREBASE_PRIVATE_KEY: '-----BEGIN RSA PRIVATE KEY-----\\nfake\\n-----END RSA PRIVATE KEY-----',
+};
 
 describe('parseEnv', () => {
   it('applies defaults when optional variables are absent', () => {

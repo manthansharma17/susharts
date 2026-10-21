@@ -12,16 +12,22 @@ export class ApiRequestError extends Error {
   }
 }
 
-/**
- * Thin wrapper over the native Fetch API. Every caller gets parsed JSON or a
- * typed ApiRequestError; no HTTP client library is used anywhere in the app.
- */
+let tokenProvider: (() => Promise<string | null>) | undefined;
+
+export function setTokenProvider(provider: () => Promise<string | null>): void {
+  tokenProvider = provider;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = tokenProvider ? await tokenProvider() : null;
+
   const response = await fetch(`${clientEnv.apiBaseUrl}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      // FormData bodies need the browser to set the multipart boundary itself.
+      ...(init?.body && !(init.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });

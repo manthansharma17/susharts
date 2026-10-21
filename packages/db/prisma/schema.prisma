@@ -30,6 +30,9 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  cartItems     CartItem[]
+  orders        Order[]
+
   @@index([role])
 }
 
@@ -131,6 +134,9 @@ model ProductVariant {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  cartItems      CartItem[]
+  orderItems     OrderItem[]
+
   @@index([productId, position])
   @@index([isAvailable])
 }
@@ -149,4 +155,134 @@ model ProductImage {
   createdAt  DateTime @default(now())
 
   @@index([productId, position])
+}
+
+// ──────────────────────────────────────────────
+// Cart
+// ──────────────────────────────────────────────
+
+/// One line per user per variant. Prices are never stored here; they are read
+/// live from the variant so the cart can't carry stale or client-supplied prices.
+model CartItem {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @db.Uuid
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId String         @db.Uuid
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, variantId])
+  @@index([variantId])
+}
+
+// ──────────────────────────────────────────────
+// Orders & payments
+// ──────────────────────────────────────────────
+
+enum OrderStatus {
+  /// Stock reserved; waiting for a verified Razorpay payment.
+  PENDING_PAYMENT
+  PAID
+  /// Customer abandoned checkout; stock released.
+  CANCELLED
+  /// Not paid within the reservation window; stock released.
+  EXPIRED
+}
+
+enum PaymentStatus {
+  AUTHORIZED
+  CAPTURED
+  FAILED
+}
+
+model Order {
+  id              String      @id @default(uuid()) @db.Uuid
+  orderNumber     String      @unique
+  userId          String      @db.Uuid
+  user            User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  status          OrderStatus @default(PENDING_PAYMENT)
+
+  customerName    String
+  email           String
+  phone           String
+  addressLine1    String
+  addressLine2    String?
+  city            String
+  state           String
+  postalCode      String
+  country         String      @default("IN")
+
+  /// All amounts in integer paise, computed on the server.
+  subtotalInPaise Int
+  shippingInPaise Int
+  totalInPaise    Int
+  currency        String      @default("INR")
+
+  razorpayOrderId String?     @unique
+  /// Stock reservation ends here; unpaid orders past this are expired.
+  expiresAt       DateTime
+  paidAt          DateTime?
+  cancelledAt     DateTime?
+  /// Set when something needs a human (e.g. paid after stock was released).
+  requiresReview  Boolean     @default(false)
+  reviewReason    String?
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           OrderItem[]
+  payments        Payment[]
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+}
+
+/// Snapshot of what was bought; never changes when the catalog does.
+model OrderItem {
+  id               String          @id @default(uuid()) @db.Uuid
+  orderId          String          @db.Uuid
+  order            Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String?         @db.Uuid
+  variantId        String?         @db.Uuid
+  variant          ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  productName      String
+  productSlug      String
+  variantLabel     String
+  sku              String
+  unitPriceInPaise Int
+  quantity         Int
+  lineTotalInPaise Int
+  fulfillmentType  FulfillmentType
+  productionDays   Int?
+  /// True when stock was decremented for this line (tracked-stock variants only).
+  stockReserved    Boolean
+
+  @@index([orderId])
+  @@index([variantId])
+}
+
+model Payment {
+  id                String        @id @default(uuid()) @db.Uuid
+  orderId           String        @db.Uuid
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  razorpayPaymentId String        @unique
+  status            PaymentStatus
+  amountInPaise     Int
+  method            String?
+  errorCode         String?
+  errorDescription  String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([orderId])
+}
+
+/// Razorpay webhook event IDs already processed, for duplicate-delivery safety.
+model WebhookEvent {
+  id         String   @id
+  event      String
+  receivedAt DateTime @default(now())
 }
