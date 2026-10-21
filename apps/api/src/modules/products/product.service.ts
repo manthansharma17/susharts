@@ -43,6 +43,8 @@ interface RawProductRow {
   fulfillmentType: string;
   categoryId: string;
   createdAt: Date;
+  reviewCount: number;
+  ratingSum: number;
   images: Array<{ id: string; url: string; altText: string | null; position: number }>;
   variants: Array<{
     id: string;
@@ -72,6 +74,8 @@ function toProductSummary(row: RawProductRow): ProductSummary {
     heroImage: sortedImages[0] ?? null,
     minPriceInPaise: prices.length > 0 ? Math.min(...prices) : 0,
     isAvailable: availableVariants.length > 0,
+    ratingAverage: row.reviewCount === 0 ? 0 : Math.round((row.ratingSum / row.reviewCount) * 10) / 10,
+    ratingCount: row.reviewCount,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -139,6 +143,8 @@ export async function listProducts(query: ProductListQuery): Promise<ProductList
         fulfillmentType: true,
         categoryId: true,
         createdAt: true,
+        reviewCount: true,
+        ratingSum: true,
         images: { select: imageSelect, orderBy: { position: 'asc' }, take: 1 },
         variants: { select: variantSelect, where: { isAvailable: true } },
       },
@@ -186,6 +192,8 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
       metaTitle: true,
       metaDescription: true,
       createdAt: true,
+      reviewCount: true,
+      ratingSum: true,
       images: { select: imageSelect, orderBy: { position: 'asc' } },
       variants: { select: variantSelect, orderBy: { position: 'asc' } },
       category: {

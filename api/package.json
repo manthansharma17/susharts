@@ -1,0 +1,5 @@
+{
+  "name": "@susharts/vercel-function",
+  "private": true,
+  "type": "module"
+}

@@ -7,7 +7,9 @@ import { EmptyState } from '../components/EmptyState.js';
 import { ErrorMessage } from '../components/ErrorMessage.js';
 import { Price } from '../components/Price.js';
 import { ProductGallery } from '../components/ProductGallery.js';
+import { ProductReviews } from '../components/ProductReviews.js';
 import { QuantityStepper } from '../components/QuantityStepper.js';
+import { RatingLine } from '../components/Stars.js';
 import { PageSpinner } from '../components/Spinner.js';
 import { useApi } from '../hooks/use-api.js';
 import { useCart } from '../lib/cart-context.js';
@@ -44,11 +46,20 @@ function AddToCart({ variant }: { variant: ProductVariant }) {
       <div className="flex flex-wrap items-center gap-3">
         {!soldOut && (
           <>
-            <QuantityStepper value={quantity} max={max} onChange={setQuantity} disabled={Boolean(busy)} />
+            <QuantityStepper
+              value={quantity}
+              max={max}
+              onChange={setQuantity}
+              disabled={Boolean(busy)}
+            />
           </>
         )}
         {soldOut ? (
-          <button type="button" disabled className="btn-primary flex-1 px-8 py-3 text-base sm:flex-none">
+          <button
+            type="button"
+            disabled
+            className="btn-primary flex-1 px-8 py-3 text-base sm:flex-none"
+          >
             Sold out
           </button>
         ) : (
@@ -73,7 +84,10 @@ function AddToCart({ variant }: { variant: ProductVariant }) {
         )}
       </div>
       {result && (
-        <p role="status" className={`mt-3 text-sm ${result.ok ? 'text-green-700' : 'text-red-700'}`}>
+        <p
+          role="status"
+          className={`mt-3 text-sm ${result.ok ? 'text-green-700' : 'text-red-700'}`}
+        >
           {result.text}
           {result.ok && (
             <>
@@ -129,13 +143,21 @@ function VariantSelector({
   );
 }
 
-function StockBadge({ variant, fulfillmentType, productionDays }: {
+function StockBadge({
+  variant,
+  fulfillmentType,
+  productionDays,
+}: {
   variant: ProductVariant;
   fulfillmentType: string;
   productionDays: number | null;
 }) {
   if (!variant.isAvailable) {
-    return <span className="inline-block rounded bg-blush-100 px-3 py-1 text-sm text-cocoa-500">Out of stock</span>;
+    return (
+      <span className="inline-block rounded bg-blush-100 px-3 py-1 text-sm text-cocoa-500">
+        Out of stock
+      </span>
+    );
   }
 
   if (fulfillmentType === 'MADE_TO_ORDER') {
@@ -154,14 +176,21 @@ function StockBadge({ variant, fulfillmentType, productionDays }: {
     );
   }
 
-  return <span className="inline-block rounded bg-blush-50 px-3 py-1 text-sm text-blush-600">In stock</span>;
+  return (
+    <span className="inline-block rounded bg-blush-50 px-3 py-1 text-sm text-blush-600">
+      In stock
+    </span>
+  );
 }
 
 export function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: product, loading, error, refetch } = useApi<ProductDetail>(
-    slug ? `/api/v1/products/${slug}` : null,
-  );
+  const {
+    data: product,
+    loading,
+    error,
+    refetch,
+  } = useApi<ProductDetail>(slug ? `/api/v1/products/${slug}` : null);
 
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
 
@@ -197,7 +226,12 @@ export function ProductDetailPage() {
         items={[
           { label: 'Shop', to: '/shop' },
           ...(product.category.parent
-            ? [{ label: product.category.parent.name, to: `/category/${product.category.parent.slug}` }]
+            ? [
+                {
+                  label: product.category.parent.name,
+                  to: `/category/${product.category.parent.slug}`,
+                },
+              ]
             : []),
           { label: product.category.name, to: `/category/${product.category.slug}` },
           { label: product.name },
@@ -214,6 +248,12 @@ export function ProductDetailPage() {
             {product.name}
           </h1>
 
+          {product.ratingCount > 0 && (
+            <a href="#reviews-heading" className="mt-2 inline-block">
+              <RatingLine average={product.ratingAverage} count={product.ratingCount} size="md" />
+            </a>
+          )}
+
           {variant && (
             <div className="mt-3">
               <Price
@@ -221,11 +261,14 @@ export function ProductDetailPage() {
                 compareAtPaise={variant.compareAtPriceInPaise}
                 className="text-lg"
               />
-              {product.variants.length > 1 && product.variants.some((v) => v.priceInPaise !== product.variants[0]!.priceInPaise) && (
-                <span className="ml-2 text-sm text-cocoa-400">
-                  From {formatInr(product.minPriceInPaise)}
-                </span>
-              )}
+              {product.variants.length > 1 &&
+                product.variants.some(
+                  (v) => v.priceInPaise !== product.variants[0]!.priceInPaise,
+                ) && (
+                  <span className="ml-2 text-sm text-cocoa-400">
+                    From {formatInr(product.minPriceInPaise)}
+                  </span>
+                )}
             </div>
           )}
 
@@ -250,12 +293,16 @@ export function ProductDetailPage() {
           {variant && <AddToCart key={variant.id} variant={variant} />}
 
           {product.shortDescription && (
-            <p className="mt-4 text-sm leading-relaxed text-cocoa-500">{product.shortDescription}</p>
+            <p className="mt-4 text-sm leading-relaxed text-cocoa-500">
+              {product.shortDescription}
+            </p>
           )}
 
           {product.description && (
             <div className="mt-6 border-t border-blush-200 pt-6">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-cocoa-700">Description</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-cocoa-700">
+                Description
+              </h2>
               <div className="mt-2 text-sm leading-relaxed text-cocoa-500 whitespace-pre-line">
                 {product.description}
               </div>
@@ -284,6 +331,8 @@ export function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      <ProductReviews slug={product.slug} />
     </div>
   );
 }

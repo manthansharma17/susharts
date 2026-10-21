@@ -7,7 +7,9 @@ import type { AuthUser } from '../../middleware/auth.js';
 vi.mock('@susharts/db', () => ({ prisma: {} }));
 vi.mock('../../lib/firebase-admin.js', () => ({}));
 vi.mock('../../lib/logger.js', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
-vi.mock('../../config/env.js', () => ({ getEnv: () => ({ RAZORPAY_WEBHOOK_SECRET: 'whsec_test' }) }));
+vi.mock('../../config/env.js', () => ({
+  getEnv: () => ({ RAZORPAY_WEBHOOK_SECRET: 'whsec_test' }),
+}));
 
 const service = {
   createCheckout: vi.fn().mockResolvedValue({ orderId: 'o1' }),
@@ -58,7 +60,9 @@ describe('checkout routes', () => {
   });
 
   it('normalises the phone number and ignores client-sent totals', async () => {
-    await request(appAs('CUSTOMER')).post('/checkout').send({ ...valid, totalInPaise: 1, items: [] });
+    await request(appAs('CUSTOMER'))
+      .post('/checkout')
+      .send({ ...valid, totalInPaise: 1, items: [] });
     const [, input] = service.createCheckout.mock.calls[0]!;
     expect(input.phone).toBe('9876543210');
     expect(input).not.toHaveProperty('totalInPaise');
@@ -72,7 +76,9 @@ describe('checkout routes', () => {
     ['a bad email', { email: 'nope' }],
     ['a blank address', { addressLine1: '  ' }],
   ])('rejects %s', async (_label, patch) => {
-    const res = await request(appAs('CUSTOMER')).post('/checkout').send({ ...valid, ...patch });
+    const res = await request(appAs('CUSTOMER'))
+      .post('/checkout')
+      .send({ ...valid, ...patch });
     expect(res.status).toBe(400);
     expect(service.createCheckout).not.toHaveBeenCalled();
   });
@@ -80,15 +86,23 @@ describe('checkout routes', () => {
   it('rejects a malformed signature before calling the service', async () => {
     const res = await request(appAs('CUSTOMER'))
       .post(`/checkout/${ORDER_ID}/verify`)
-      .send({ razorpay_order_id: 'order_1', razorpay_payment_id: 'pay_1', razorpay_signature: 'xyz' });
+      .send({
+        razorpay_order_id: 'order_1',
+        razorpay_payment_id: 'pay_1',
+        razorpay_signature: 'xyz',
+      });
     expect(res.status).toBe(400);
     expect(service.verifyCheckoutPayment).not.toHaveBeenCalled();
   });
 });
 
 describe('POST /webhooks/razorpay', () => {
-  const body = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: { id: 'pay_1' } } } });
-  const sig = (raw: string, secret = 'whsec_test') => createHmac('sha256', secret).update(raw).digest('hex');
+  const body = JSON.stringify({
+    event: 'payment.captured',
+    payload: { payment: { entity: { id: 'pay_1' } } },
+  });
+  const sig = (raw: string, secret = 'whsec_test') =>
+    createHmac('sha256', secret).update(raw).digest('hex');
 
   it('accepts a correctly signed event without any user session', async () => {
     const res = await request(appAs(null))
@@ -105,7 +119,9 @@ describe('POST /webhooks/razorpay', () => {
     ['a wrong signature', () => sig(body, 'other')],
     ['no signature', () => undefined],
   ])('rejects %s', async (_label, makeSig) => {
-    const req = request(appAs(null)).post('/webhooks/razorpay').set('Content-Type', 'application/json');
+    const req = request(appAs(null))
+      .post('/webhooks/razorpay')
+      .set('Content-Type', 'application/json');
     const s = makeSig();
     if (s) req.set('X-Razorpay-Signature', s);
     const res = await req.send(body);

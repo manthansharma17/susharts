@@ -19,6 +19,7 @@ import {
   type RazorpayPayment,
 } from '../../lib/razorpay.js';
 import { toCartLine, type CartVariant } from '../cart/cart.service.js';
+import { sendOrderNotification } from '../notifications/order-notifications.js';
 
 /** Razorpay's minimum order amount is ₹1. */
 const MIN_AMOUNT_IN_PAISE = 100;
@@ -66,8 +67,11 @@ async function takeStock(tx: Tx, variantId: string, quantity: number): Promise<b
  * Moves a PENDING_PAYMENT order to CANCELLED/EXPIRED and returns its reserved stock.
  * The conditional status update makes this safe to call twice or concurrently.
  */
-export async function releaseOrder(orderId: string, status: 'CANCELLED' | 'EXPIRED'): Promise<boolean> {
-  return prisma.$transaction(async (tx) => {
+export async function releaseOrder(
+  orderId: string,
+  status: 'CANCELLED' | 'EXPIRED',
+): Promise<boolean> {
+  const released = await prisma.$transaction(async (tx) => {
     const moved = await tx.order.updateMany({
       where: { id: orderId, status: 'PENDING_PAYMENT' },
       data: { status, cancelledAt: new Date() },
@@ -85,6 +89,11 @@ export async function releaseOrder(orderId: string, status: 'CANCELLED' | 'EXPIR
     }
     return true;
   });
+  // Only tell the customer if a payment attempt actually failed; a plain abandoned checkout gets no email.
+  if (released && (await prisma.payment.count({ where: { orderId, status: 'FAILED' } })) > 0) {
+    void sendOrderNotification(orderId, 'PAYMENT_FAILED').catch(() => undefined);
+  }
+  return released;
 }
 
 export async function expireStaleOrders(now = new Date()): Promise<number> {
@@ -131,14 +140,22 @@ export async function createCheckout(
       const variant = byId.get(row.variantId);
       const line = variant ? toCartLine(variant, row.quantity) : null;
       if (!variant || !line || line.issue) {
-        throw new HttpError(409, 'CART_CHANGED', 'Some items in your cart have changed. Please review your cart.');
+        throw new HttpError(
+          409,
+          'CART_CHANGED',
+          'Some items in your cart have changed. Please review your cart.',
+        );
       }
       return { variant, line };
     });
 
     for (const { variant, line } of lines) {
       if (variant.stockQuantity !== null && !(await takeStock(tx, variant.id, line.quantity))) {
-        throw new HttpError(409, 'INSUFFICIENT_STOCK', `"${variant.product.name}" no longer has enough stock`);
+        throw new HttpError(
+          409,
+          'INSUFFICIENT_STOCK',
+          `"${variant.product.name}" no longer has enough stock`,
+        );
       }
     }
 
@@ -193,7 +210,11 @@ export async function createCheckout(
   } catch (err) {
     logger.error({ err, orderId: order.id }, 'Razorpay order creation failed');
     await releaseOrder(order.id, 'CANCELLED');
-    throw new HttpError(502, 'PAYMENT_PROVIDER_ERROR', 'Could not start payment. Please try again.');
+    throw new HttpError(
+      502,
+      'PAYMENT_PROVIDER_ERROR',
+      'Could not start payment. Please try again.',
+    );
   }
 
   await prisma.order.update({ where: { id: order.id }, data: { razorpayOrderId } });
@@ -237,7 +258,22 @@ async function clearPurchasedFromCart(tx: Tx, orderId: string, userId: string) {
 
 async function flagForReview(orderId: string, reason: string) {
   logger.warn({ orderId, reason }, 'Order flagged for review');
-  await prisma.order.update({ where: { id: orderId }, data: { requiresReview: true, reviewReason: reason } });
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { requiresReview: true, reviewReason: reason },
+  });
+}
+
+async function recordConfirmed(tx: Tx, orderId: string) {
+  await tx.orderStatusEvent.create({
+    data: {
+      orderId,
+      fromStatus: null,
+      toStatus: 'CONFIRMED',
+      actorId: null,
+      note: 'Payment verified',
+    },
+  });
 }
 
 /** Marks the order paid for a captured payment. Idempotent; safe under concurrent callback + webhook. */
@@ -246,10 +282,13 @@ async function markOrderPaid(orderId: string, payment: RazorpayPayment): Promise
     await upsertPayment(tx, orderId, payment, 'CAPTURED');
     const moved = await tx.order.updateMany({
       where: { id: orderId, status: 'PENDING_PAYMENT' },
-      data: { status: 'PAID', paidAt: new Date() },
+      data: { status: 'PAID', paidAt: new Date(), fulfillmentStatus: 'CONFIRMED' },
     });
     const order = await tx.order.findUniqueOrThrow({ where: { id: orderId } });
-    if (moved.count === 1) await clearPurchasedFromCart(tx, orderId, order.userId);
+    if (moved.count === 1) {
+      await recordConfirmed(tx, orderId);
+      await clearPurchasedFromCart(tx, orderId, order.userId);
+    }
     return { moved: moved.count === 1, order };
   });
   if (outcome.moved) return;
@@ -257,7 +296,8 @@ async function markOrderPaid(orderId: string, payment: RazorpayPayment): Promise
   const { order } = outcome;
   if (order.status === 'PAID') {
     const captured = await prisma.payment.count({ where: { orderId, status: 'CAPTURED' } });
-    if (captured > 1) await flagForReview(orderId, 'DUPLICATE_PAYMENT: more than one captured payment');
+    if (captured > 1)
+      await flagForReview(orderId, 'DUPLICATE_PAYMENT: more than one captured payment');
     return;
   }
 
@@ -266,9 +306,15 @@ async function markOrderPaid(orderId: string, payment: RazorpayPayment): Promise
     await prisma.$transaction(async (tx) => {
       const moved = await tx.order.updateMany({
         where: { id: orderId, status: { in: ['CANCELLED', 'EXPIRED'] } },
-        data: { status: 'PAID', paidAt: new Date(), cancelledAt: null },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+          cancelledAt: null,
+          fulfillmentStatus: 'CONFIRMED',
+        },
       });
       if (moved.count === 0) return;
+      await recordConfirmed(tx, orderId);
       const items = await tx.orderItem.findMany({
         where: { orderId, stockReserved: true, variantId: { not: null } },
         select: { variantId: true, quantity: true },
@@ -281,14 +327,19 @@ async function markOrderPaid(orderId: string, payment: RazorpayPayment): Promise
   } catch (err) {
     if (!(err instanceof StockConflict)) throw err;
     // Money was taken but the stock is gone: record it as paid and get a human to resolve it.
-    await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        status: 'PAID',
-        paidAt: new Date(),
-        requiresReview: true,
-        reviewReason: 'PAID_AFTER_RELEASE: stock no longer available; refund or restock needed',
-      },
+    await prisma.$transaction(async (tx) => {
+      const moved = await tx.order.updateMany({
+        where: { id: orderId, status: { in: ['CANCELLED', 'EXPIRED'] } },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+          cancelledAt: null,
+          fulfillmentStatus: 'CONFIRMED',
+          requiresReview: true,
+          reviewReason: 'PAID_AFTER_RELEASE: stock no longer available; refund or restock needed',
+        },
+      });
+      if (moved.count === 1) await recordConfirmed(tx, orderId);
     });
     logger.warn({ orderId }, 'Late payment could not re-reserve stock');
   }
@@ -301,7 +352,10 @@ async function markOrderPaid(orderId: string, payment: RazorpayPayment): Promise
 export async function applyPayment(payment: RazorpayPayment): Promise<string | null> {
   const order = await prisma.order.findUnique({ where: { razorpayOrderId: payment.order_id } });
   if (!order) {
-    logger.warn({ paymentId: payment.id, razorpayOrderId: payment.order_id }, 'Payment for unknown order');
+    logger.warn(
+      { paymentId: payment.id, razorpayOrderId: payment.order_id },
+      'Payment for unknown order',
+    );
     return null;
   }
 
@@ -312,7 +366,12 @@ export async function applyPayment(payment: RazorpayPayment): Promise<string | n
 
   if (payment.amount !== order.totalInPaise || payment.currency !== order.currency) {
     await prisma.$transaction((tx) =>
-      upsertPayment(tx, order.id, payment, payment.status === 'captured' ? 'CAPTURED' : 'AUTHORIZED'),
+      upsertPayment(
+        tx,
+        order.id,
+        payment,
+        payment.status === 'captured' ? 'CAPTURED' : 'AUTHORIZED',
+      ),
     );
     await flagForReview(order.id, `AMOUNT_MISMATCH: paid ${payment.amount} ${payment.currency}`);
     return order.id;
@@ -342,6 +401,8 @@ export async function applyPayment(payment: RazorpayPayment): Promise<string | n
     if ((err as { code?: string }).code !== 'P2002') throw err;
     await markOrderPaid(order.id, current);
   }
+  // Idempotent: repeated callbacks/webhooks reuse the same notification row and never resend.
+  void sendOrderNotification(order.id, 'ORDER_CONFIRMED').catch(() => undefined);
   return order.id;
 }
 
@@ -362,7 +423,14 @@ export async function verifyCheckoutPayment(
   if (!order.razorpayOrderId || input.razorpay_order_id !== order.razorpayOrderId) {
     throw HttpError.badRequest('Payment does not belong to this order');
   }
-  if (!verifyPaymentSignature(order.razorpayOrderId, input.razorpay_payment_id, input.razorpay_signature, keySecret)) {
+  if (
+    !verifyPaymentSignature(
+      order.razorpayOrderId,
+      input.razorpay_payment_id,
+      input.razorpay_signature,
+      keySecret,
+    )
+  ) {
     throw new HttpError(400, 'INVALID_SIGNATURE', 'Payment verification failed');
   }
 
@@ -384,7 +452,14 @@ export async function cancelCheckout(userId: string, orderId: string): Promise<O
 export async function getOrderSummary(userId: string, orderId: string): Promise<OrderSummary> {
   const order = await prisma.order.findFirst({
     where: { id: orderId, userId },
-    include: { items: { orderBy: { productName: 'asc' } } },
+    include: {
+      items: { orderBy: { productName: 'asc' } },
+      events: {
+        orderBy: { createdAt: 'asc' },
+        select: { toStatus: true, createdAt: true, note: true },
+      },
+      payments: { where: { status: 'FAILED' }, select: { id: true }, take: 1 },
+    },
   });
   if (!order) throw HttpError.notFound('Order not found');
   return {
@@ -418,11 +493,26 @@ export async function getOrderSummary(userId: string, orderId: string): Promise<
     paidAt: order.paidAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     expiresAt: order.expiresAt.toISOString(),
+    fulfillmentStatus: order.fulfillmentStatus,
+    shippingCarrier: order.shippingCarrier,
+    trackingNumber: order.trackingNumber,
+    shippedAt: order.shippedAt?.toISOString() ?? null,
+    deliveredAt: order.deliveredAt?.toISOString() ?? null,
+    hadFailedPayment: order.payments.length > 0,
+    // Customer-facing timeline: staff notes are internal, so only the status and time are shown.
+    timeline: order.events.map((e) => ({
+      toStatus: e.toStatus,
+      createdAt: e.createdAt.toISOString(),
+      note: null,
+    })),
   };
 }
 
 /** Handles a signature-verified webhook body. Duplicate deliveries are acknowledged without reprocessing. */
-export async function handleWebhookEvent(eventId: string | undefined, body: unknown): Promise<void> {
+export async function handleWebhookEvent(
+  eventId: string | undefined,
+  body: unknown,
+): Promise<void> {
   const event = body as { event?: string; payload?: { payment?: { entity?: RazorpayPayment } } };
   const name = event.event ?? 'unknown';
 
@@ -436,8 +526,10 @@ export async function handleWebhookEvent(eventId: string | undefined, body: unkn
 
   // Recorded only after successful processing, so a failure lets Razorpay's retry run it again.
   if (eventId) {
-    await prisma.webhookEvent.create({ data: { id: eventId, event: name } }).catch((err: { code?: string }) => {
-      if (err.code !== 'P2002') throw err;
-    });
+    await prisma.webhookEvent
+      .create({ data: { id: eventId, event: name } })
+      .catch((err: { code?: string }) => {
+        if (err.code !== 'P2002') throw err;
+      });
   }
 }

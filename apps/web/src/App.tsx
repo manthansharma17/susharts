@@ -7,14 +7,18 @@ import { AuthProvider, useAuth } from './lib/auth-context.js';
 import { CartProvider } from './lib/cart-context.js';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage.js';
 import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
+import { AdminOrderDetailPage } from './pages/AdminOrderDetailPage.js';
+import { AdminOrdersPage } from './pages/AdminOrdersPage.js';
 import { AdminProductFormPage } from './pages/AdminProductFormPage.js';
 import { AdminProductImagesPage } from './pages/AdminProductImagesPage.js';
+import { AdminReviewsPage } from './pages/AdminReviewsPage.js';
 import { CartPage } from './pages/CartPage.js';
 import { CategoryPage } from './pages/CategoryPage.js';
 import { CheckoutPage } from './pages/CheckoutPage.js';
 import { HomePage } from './pages/HomePage.js';
 import { NotFoundPage } from './pages/NotFoundPage.js';
 import { OrderConfirmationPage } from './pages/OrderConfirmationPage.js';
+import { OrdersPage } from './pages/OrdersPage.js';
 import { ProductDetailPage } from './pages/ProductDetailPage.js';
 import { ShopPage } from './pages/ShopPage.js';
 
@@ -40,12 +44,16 @@ export function App() {
               <Route path="products/:slug" element={<ProductDetailPage />} />
               <Route path="cart" element={<CartPage />} />
               <Route path="checkout" element={<CheckoutPage />} />
+              <Route path="orders" element={<OrdersPage />} />
               <Route path="orders/:id" element={<OrderConfirmationPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="categories" element={<AdminCategoriesPage />} />
+              <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="orders/:id" element={<AdminOrderDetailPage />} />
+              <Route path="reviews" element={<AdminReviewsPage />} />
               <Route path="products/new" element={<AdminProductFormPage />} />
               <Route path="products/:id" element={<AdminProductFormPage />} />
               <Route path="products/:id/images" element={<AdminProductImagesPage />} />

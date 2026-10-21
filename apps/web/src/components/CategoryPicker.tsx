@@ -67,7 +67,11 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
             )),
           ])}
         </select>
-        <button type="button" onClick={() => setCreating((c) => !c)} className="btn-secondary shrink-0">
+        <button
+          type="button"
+          onClick={() => setCreating((c) => !c)}
+          className="btn-secondary shrink-0"
+        >
           {creating ? 'Cancel' : '+ New'}
         </button>
       </div>
@@ -78,7 +82,10 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
         <div className="mt-3 space-y-3 rounded-2xl bg-blush-50 p-4 ring-1 ring-blush-100">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor={`${id}-new-name`} className="block text-xs font-semibold text-cocoa-600">
+              <label
+                htmlFor={`${id}-new-name`}
+                className="block text-xs font-semibold text-cocoa-600"
+              >
                 Category name
               </label>
               <input
@@ -96,10 +103,15 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
                 placeholder="e.g. Keychains"
                 className="field mt-1 w-full"
               />
-              {name.trim() && <p className="mt-1 text-xs text-cocoa-400">/category/{slugify(name)}</p>}
+              {name.trim() && (
+                <p className="mt-1 text-xs text-cocoa-400">/category/{slugify(name)}</p>
+              )}
             </div>
             <div>
-              <label htmlFor={`${id}-new-parent`} className="block text-xs font-semibold text-cocoa-600">
+              <label
+                htmlFor={`${id}-new-parent`}
+                className="block text-xs font-semibold text-cocoa-600"
+              >
                 Inside (optional)
               </label>
               <select
@@ -118,7 +130,12 @@ export function CategoryPicker({ id, value, onChange }: CategoryPickerProps) {
             </div>
           </div>
           {error && <p className="text-xs text-red-700">{error}</p>}
-          <button type="button" disabled={saving} onClick={() => void create()} className="btn-primary">
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void create()}
+            className="btn-primary"
+          >
             {saving ? 'Creating…' : 'Create category'}
           </button>
         </div>

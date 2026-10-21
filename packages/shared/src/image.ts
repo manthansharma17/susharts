@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
-export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+// 4 MB: serverless platforms (Vercel) reject request bodies above ~4.5 MB.
+export const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
 export const MAX_IMAGES_PER_PRODUCT = 10;
 
 export const imageAltTextSchema = z

@@ -42,7 +42,9 @@ export function AdminDashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl font-semibold text-cocoa-800">Products</h1>
-          <p className="mt-1 text-sm text-cocoa-500">All products, including drafts and archived items.</p>
+          <p className="mt-1 text-sm text-cocoa-500">
+            All products, including drafts and archived items.
+          </p>
         </div>
         <Link to="/admin/products/new" className="btn-primary">
           + New product
@@ -123,7 +125,11 @@ export function AdminDashboardPage() {
                         <div className="flex items-center gap-3">
                           <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-blush-100">
                             {p.heroImageUrl ? (
-                              <img src={p.heroImageUrl} alt="" className="h-full w-full object-cover" />
+                              <img
+                                src={p.heroImageUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               <FlowerIcon className="m-2.5 h-6 w-6 text-blush-300" />
                             )}
@@ -140,7 +146,9 @@ export function AdminDashboardPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[p.status]}`}>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[p.status]}`}
+                        >
                           {p.status.charAt(0) + p.status.slice(1).toLowerCase()}
                         </span>
                       </td>
@@ -154,10 +162,16 @@ export function AdminDashboardPage() {
                       </td>
                       <td className="px-4 py-3 text-cocoa-600">{p.imageCount}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-right">
-                        <Link to={`/admin/products/${p.id}`} className="btn-secondary mr-2 px-3 py-1 text-xs">
+                        <Link
+                          to={`/admin/products/${p.id}`}
+                          className="btn-secondary mr-2 px-3 py-1 text-xs"
+                        >
                           Edit
                         </Link>
-                        <Link to={`/admin/products/${p.id}/images`} className="btn-secondary px-3 py-1 text-xs">
+                        <Link
+                          to={`/admin/products/${p.id}/images`}
+                          className="btn-secondary px-3 py-1 text-xs"
+                        >
                           Photos
                         </Link>
                       </td>

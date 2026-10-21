@@ -17,7 +17,8 @@ interface FormValues {
 
 function validate(v: FormValues): string | null {
   if (!v.name.trim()) return 'Name is required.';
-  if (!SLUG_PATTERN.test(v.slug)) return 'Slug may only contain lowercase letters, numbers, and single hyphens.';
+  if (!SLUG_PATTERN.test(v.slug))
+    return 'Slug may only contain lowercase letters, numbers, and single hyphens.';
   return null;
 }
 
@@ -46,7 +47,10 @@ function CategoryFields({
           value={value.name}
           maxLength={100}
           onChange={(e) =>
-            set({ name: e.target.value, ...(value.slugEdited ? {} : { slug: slugify(e.target.value) }) })
+            set({
+              name: e.target.value,
+              ...(value.slugEdited ? {} : { slug: slugify(e.target.value) }),
+            })
           }
           className="field mt-1 w-full"
         />
@@ -189,7 +193,9 @@ function CategoryRow({
   const otherParents = parents.filter((p) => p.id !== category.id);
 
   return (
-    <div className={`rounded-2xl p-3 ${category.isArchived ? 'bg-blush-50/60 opacity-75' : 'bg-white'}`}>
+    <div
+      className={`rounded-2xl p-3 ${category.isArchived ? 'bg-blush-50/60 opacity-75' : 'bg-white'}`}
+    >
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex gap-1">
           <button
@@ -221,7 +227,8 @@ function CategoryRow({
             )}
           </p>
           <p className="text-xs text-cocoa-400">
-            /category/{category.slug} · {category.productCount} product{category.productCount === 1 ? '' : 's'}
+            /category/{category.slug} · {category.productCount} product
+            {category.productCount === 1 ? '' : 's'}
             {childCount > 0 ? ` · ${childCount} sub-categor${childCount === 1 ? 'y' : 'ies'}` : ''}
           </p>
         </div>
@@ -239,7 +246,12 @@ function CategoryRow({
           >
             {editing ? 'Cancel' : 'Edit'}
           </button>
-          <button type="button" disabled={disabled} onClick={toggleArchive} className="btn-secondary px-3 py-1 text-xs">
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={toggleArchive}
+            className="btn-secondary px-3 py-1 text-xs"
+          >
             {category.isArchived ? 'Restore' : 'Archive'}
           </button>
           <button
@@ -254,13 +266,19 @@ function CategoryRow({
       </div>
 
       {editing && values && (
-        <form onSubmit={save} className="mt-3 rounded-2xl bg-blush-50 p-4 ring-1 ring-blush-100" noValidate>
+        <form
+          onSubmit={save}
+          className="mt-3 rounded-2xl bg-blush-50 p-4 ring-1 ring-blush-100"
+          noValidate
+        >
           <CategoryFields
             value={values}
             onChange={setValues}
             parents={otherParents}
             prefix={`edit-${category.id}`}
-            parentLocked={childCount > 0 ? 'Has sub-categories, so it must stay a main category.' : undefined}
+            parentLocked={
+              childCount > 0 ? 'Has sub-categories, so it must stay a main category.' : undefined
+            }
           />
           <button type="submit" disabled={working} className="btn-primary mt-4 px-4 py-1.5 text-xs">
             {working ? 'Saving…' : 'Save changes'}
@@ -347,7 +365,8 @@ export function AdminCategoriesPage() {
         <div>
           <h1 className="font-display text-3xl font-semibold text-cocoa-800">Categories</h1>
           <p className="mt-1 text-sm text-cocoa-500">
-            Order here is the order shown in the store menu. Archived categories are hidden from customers.
+            Order here is the order shown in the store menu. Archived categories are hidden from
+            customers.
           </p>
         </div>
         {!creating && (
@@ -358,7 +377,11 @@ export function AdminCategoriesPage() {
       </div>
 
       {creating && (
-        <form onSubmit={(e) => void create(e)} className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-blush-100" noValidate>
+        <form
+          onSubmit={(e) => void create(e)}
+          className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-blush-100"
+          noValidate
+        >
           <h2 className="mb-4 font-display text-lg font-semibold text-cocoa-800">New category</h2>
           <CategoryFields value={values} onChange={setValues} parents={roots} prefix="new" />
           <div className="mt-4 flex gap-2">
@@ -387,7 +410,9 @@ export function AdminCategoriesPage() {
       )}
 
       {roots.length === 0 ? (
-        <p className="mt-10 text-center text-sm text-cocoa-400">No categories yet. Create your first one above.</p>
+        <p className="mt-10 text-center text-sm text-cocoa-400">
+          No categories yet. Create your first one above.
+        </p>
       ) : (
         <ul className="mt-6 space-y-4">
           {roots.map((root, i) => (

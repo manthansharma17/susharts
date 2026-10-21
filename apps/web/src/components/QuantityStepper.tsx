@@ -7,7 +7,14 @@ interface QuantityStepperProps {
   label?: string;
 }
 
-export function QuantityStepper({ value, min = 1, max, onChange, disabled = false, label = 'Quantity' }: QuantityStepperProps) {
+export function QuantityStepper({
+  value,
+  min = 1,
+  max,
+  onChange,
+  disabled = false,
+  label = 'Quantity',
+}: QuantityStepperProps) {
   return (
     <div className="qty-stepper" role="group" aria-label={label}>
       <button
@@ -18,7 +25,10 @@ export function QuantityStepper({ value, min = 1, max, onChange, disabled = fals
       >
         −
       </button>
-      <span aria-live="polite" className="min-w-[2.25rem] text-center text-sm font-semibold text-cocoa-800">
+      <span
+        aria-live="polite"
+        className="min-w-[2.25rem] text-center text-sm font-semibold text-cocoa-800"
+      >
         {value}
       </span>
       <button

@@ -97,7 +97,7 @@ export function ShopPage() {
 
       <h1 className="mt-4 font-display text-2xl font-semibold text-cocoa-800 sm:text-3xl">
         {category
-          ? allSubcategories.find((c) => c.slug === category)?.name ?? 'Shop'
+          ? (allSubcategories.find((c) => c.slug === category)?.name ?? 'Shop')
           : search
             ? `Results for "${search}"`
             : 'All products'}
@@ -106,7 +106,9 @@ export function ShopPage() {
       {/* Filters bar */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <form onSubmit={handleSearch} className="flex-1 sm:max-w-xs">
-          <label htmlFor="shop-search" className="sr-only">Search products</label>
+          <label htmlFor="shop-search" className="sr-only">
+            Search products
+          </label>
           <input
             key={search}
             id="shop-search"
@@ -139,7 +141,9 @@ export function ShopPage() {
           className="field"
         >
           {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
           ))}
         </select>
       </div>
@@ -186,7 +190,11 @@ export function ShopPage() {
         ) : (
           <EmptyState
             title="No products found"
-            description={search ? `No results for "${search}". Try a different search.` : 'Check back soon for new handmade creations.'}
+            description={
+              search
+                ? `No results for "${search}". Try a different search.`
+                : 'Check back soon for new handmade creations.'
+            }
             actionLabel={search || category ? 'Clear filters' : undefined}
             actionTo={search || category ? '/shop' : undefined}
           />

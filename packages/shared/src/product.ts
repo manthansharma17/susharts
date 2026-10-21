@@ -81,6 +81,9 @@ export const productSummarySchema = z.object({
   minPriceInPaise: z.number().int(),
   /** Whether any variant is available. */
   isAvailable: z.boolean(),
+  /** Mean of published review ratings, 0 when there are none. */
+  ratingAverage: z.number(),
+  ratingCount: z.number().int(),
   createdAt: z.string().datetime(),
 });
 

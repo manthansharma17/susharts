@@ -6,3 +6,5 @@ export * from './admin.js';
 export * from './image.js';
 export * from './cart.js';
 export * from './checkout.js';
+export * from './orders.js';
+export * from './reviews.js';

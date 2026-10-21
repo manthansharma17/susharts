@@ -20,7 +20,8 @@ export function CategoryPage() {
     for (const root of categories.data) {
       if (root.slug === slug) return { ...root, parent: null as CategoryTreeNode | null };
       for (const child of root.children) {
-        if (child.slug === slug) return { ...child, children: [] as typeof root.children, parent: root };
+        if (child.slug === slug)
+          return { ...child, children: [] as typeof root.children, parent: root };
       }
     }
     return null;

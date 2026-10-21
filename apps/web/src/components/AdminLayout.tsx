@@ -32,8 +32,14 @@ export function AdminLayout() {
   if (!current.signedIn) {
     return (
       <GateCard title="Admin sign in">
-        <p className="mt-2 text-sm text-cocoa-500">Sign in with your admin Google account to continue.</p>
-        <button type="button" onClick={() => void signInWithGoogle()} className="btn-primary mt-6 w-full">
+        <p className="mt-2 text-sm text-cocoa-500">
+          Sign in with your admin Google account to continue.
+        </p>
+        <button
+          type="button"
+          onClick={() => void signInWithGoogle()}
+          className="btn-primary mt-6 w-full"
+        >
           Sign in with Google
         </button>
         <Link to="/" className="mt-4 inline-block text-xs text-cocoa-400 hover:text-blush-600">
@@ -79,6 +85,12 @@ export function AdminLayout() {
               <NavLink to="/admin/categories" className={navLink}>
                 Categories
               </NavLink>
+              <NavLink to="/admin/orders" className={navLink}>
+                Orders
+              </NavLink>
+              <NavLink to="/admin/reviews" className={navLink}>
+                Reviews
+              </NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">
@@ -86,7 +98,11 @@ export function AdminLayout() {
               View store ↗
             </Link>
             <span className="hidden text-cocoa-400 sm:inline">{user?.email}</span>
-            <button type="button" onClick={() => void signOut()} className="btn-secondary px-3 py-1 text-xs">
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="btn-secondary px-3 py-1 text-xs"
+            >
               Sign out
             </button>
           </div>

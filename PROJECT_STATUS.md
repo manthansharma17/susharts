@@ -306,6 +306,61 @@ pricing and snapshots, stock reservation/release, oversell prevention,
 duplicate/late/failed/mismatched payments, webhook signature + dedupe,
 authorization, validation). All typecheck, lint, build clean.
 
+**Post-Phase 7 additions (committed):** product gallery (thumbnails, hover zoom,
+swipe, lightbox), Buy now, +/- quantity stepper, pink dropdown styling, photo
+crop/rotate/adjust before upload, edit/replace existing photos
+(`PUT /api/v1/admin/products/images/:imageId/file`).
+
+**Phase 8 — orders and notifications.**
+
+Migration `…_add_fulfillment_audit_notifications` (applied; additive):
+- `Order`: `fulfillmentStatus` (`CONFIRMED | PROCESSING | SHIPPED | DELIVERED |
+  CANCELLED`), `shippingCarrier`, `trackingNumber`, `shippedAt`, `deliveredAt`,
+  `fulfillmentCancelledAt`. Existing paid orders backfilled to `CONFIRMED`.
+  DB check: fulfillment status only on `PAID` orders.
+- `OrderStatusEvent` — audit trail (from, to, actor user or null = system,
+  note, timestamp).
+- `EmailNotification` — one row per (order, type), unique; status
+  `PENDING | SENT | FAILED`, attempts, last error, provider id.
+
+Payment vs fulfillment: `Order.status` (payment) changes only via verified
+Razorpay payments (Phase 7). Staff only move `fulfillmentStatus`. On verified
+payment the order becomes `CONFIRMED` with a system audit event.
+
+Customer API (signed in, own orders only; others' orders → 404):
+- `GET /api/v1/orders?page&limit` (limit ≤ 50), `GET /api/v1/orders/:id`.
+
+Admin API (`ADMIN`/`STAFF`):
+- `GET /api/v1/admin/orders?page&limit&status&fulfillment&search&review`
+- `GET /api/v1/admin/orders/:id` — detail + payments, audit history, emails,
+  allowed next steps.
+- `PATCH /api/v1/admin/orders/:id/fulfillment` — `{ from, to, note,
+  shippingCarrier?, trackingNumber? }`. Allowed: CONFIRMED→PROCESSING→SHIPPED→
+  DELIVERED; CONFIRMED/PROCESSING→CANCELLED (reason required). Rejects unpaid
+  orders (409 `NOT_PAID`), invalid moves (400), stale `from` / concurrent
+  updates (409 `STALE_STATUS`). Cancel restocks tracked items and flags
+  `requiresReview: REFUND_NEEDED` (refund manually in Razorpay).
+- `POST /api/v1/admin/orders/:id/notifications/retry`.
+
+Emails (Resend over HTTPS, no SDK): order confirmed (after verified payment),
+payment failed (only when an order with a failed attempt is released),
+shipped (with courier/tracking), delivered, cancelled. Never sent twice: the
+unique (order, type) row, a compare-and-swap claim on `attempts`, and the
+notification id as Resend `Idempotency-Key`. Failures are recorded and never
+thrown — orders/payments are unaffected; max 5 attempts; admin "Retry failed".
+HTML escapes all customer/catalog text.
+
+Frontend: `/orders` (paginated history), `/orders/:id` (detail: items,
+snapshots, totals, payment + fulfillment status, progress tracker, tracking,
+address, timestamps; also the post-payment confirmation page), "My orders" in
+the header. Admin: `/admin/orders` (filters, search, review flag) and
+`/admin/orders/:id` (fulfilment actions, history with actor, payments, emails).
+
+298 tests passing (50 new: customer ownership + pagination, admin authz,
+transition matrix, unpaid/stale/concurrent rejection, payment status never
+touched, cancel restock, email idempotency/claims/retries/failures, HTML
+escaping, confirmation/payment-failed hooks). All typecheck, lint, build clean.
+
 ## Decisions
 
 - Money is stored and transported as integer paise; no floats in pricing.
@@ -341,9 +396,12 @@ authorization, validation). All typecheck, lint, build clean.
 ## Open issues
 
 - Razorpay keys and webhook not configured yet (checkout returns 503).
-- Orders flagged `requiresReview` have no admin UI yet; query the `Order`
-  table until an admin orders view exists. Refunds are manual (Razorpay
-  dashboard).
+- Refunds are manual (Razorpay dashboard); cancelled-after-payment orders are
+  flagged `REFUND_NEEDED` but the flag isn't cleared automatically.
+- Resend not configured yet: emails are recorded as FAILED ("Email is not
+  configured") and can be retried from the admin order page once keys are set.
+- Emails that fail are retried only via the admin button (no background job);
+  after 5 attempts they stop.
 - Stale-order expiry runs lazily when a checkout starts; no background job.
 - Webhook must be reachable publicly for production; locally the browser
   verify call is the primary path.
@@ -365,5 +423,21 @@ authorization, validation). All typecheck, lint, build clean.
 
 ## Next task
 
-Next phase (email notifications, order history, admin order management) not
-started; awaiting explicit request.
+Phase 8 complete; next phase not started; awaiting explicit request.
+
+### Phase 8 setup and manual testing
+1. Resend: create an account, verify your sending domain (DNS records), create
+   an API key. In `apps/api/.env` set `RESEND_API_KEY`, `EMAIL_FROM`
+   (e.g. `Susharts <orders@yourdomain.com>`), optionally `EMAIL_REPLY_TO`,
+   and `PUBLIC_WEB_URL` (storefront URL for email links). Restart the API.
+2. With Razorpay test keys set, buy something → `/orders/:id` shows
+   "Confirmed"; the admin order page shows a SENT "Order confirmation" email.
+3. In `/admin/orders/:id`: Start preparing → Mark as shipped (enter courier
+   and tracking) → Mark as delivered. Check the customer receives shipped and
+   delivered emails, the history lists your email as actor, and the customer
+   page shows the progress tracker.
+4. Cancel a CONFIRMED order (reason required): stock returns, customer is
+   emailed, order shows "Needs review" for the refund.
+5. Pay with Razorpay's failure test card, then close the modal → a
+   "Payment failed" email is sent once.
+6. Repeat a status update from a stale tab → 409, no duplicate email.

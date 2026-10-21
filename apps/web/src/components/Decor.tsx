@@ -47,7 +47,10 @@ export function HeartIcon({ className = '', filled = false }: IconProps & { fill
   );
 }
 
-export function FlowerIcon({ className = '', center = '#f6c26b' }: IconProps & { center?: string }) {
+export function FlowerIcon({
+  className = '',
+  center = '#f6c26b',
+}: IconProps & { center?: string }) {
   return (
     <svg viewBox="0 0 40 40" className={className} aria-hidden="true">
       {[0, 72, 144, 216, 288].map((r) => (
@@ -69,13 +72,55 @@ export function FlowerIcon({ className = '', center = '#f6c26b' }: IconProps & {
 export function YarnIcon({ className = '' }: IconProps) {
   return (
     <svg viewBox="0 0 48 48" className={className} fill="none" aria-hidden="true">
-      <circle cx="24" cy="24" r="18" fill="currentColor" fillOpacity=".3" stroke="currentColor" strokeWidth="2.5" />
+      <circle
+        cx="24"
+        cy="24"
+        r="18"
+        fill="currentColor"
+        fillOpacity=".3"
+        stroke="currentColor"
+        strokeWidth="2.5"
+      />
       <path
         d="M9 17c8 2 22 12 26 24M14 9c6 5 19 17 22 30M28 7c-6 9-12 24-11 34M40 15c-10 1-24 9-31 19"
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
       />
+    </svg>
+  );
+}
+
+export function GiftIcon({ className = '' }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 9h16v4H4Zm1.5 4h13v7h-13ZM12 9v11M12 9c-1-3-5-4-5-1.5S12 9 12 9Zm0 0c1-3 5-4 5-1.5S12 9 12 9Z" />
+    </svg>
+  );
+}
+
+export function SparkleIcon({ className = '' }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3.5 13.8 9l5.5 1.8-5.5 1.8L12 18l-1.8-5.4L4.7 10.8 10.2 9 12 3.5ZM18.5 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z" />
     </svg>
   );
 }
@@ -122,7 +167,11 @@ const CATEGORY_ICON_PATHS: Array<{ match: RegExp; path: string }> = [
 const FALLBACK_ICON =
   'M12 4a8 8 0 1 1 0 16 8 8 0 0 1 0-16ZM5 9c4 1 9 5 11 11M8 5c3 3 8 8 9 13M17 6c-4 3-8 9-8 14';
 
-export function CategoryIcon({ slug, name, className = '' }: { slug: string; name: string } & IconProps) {
+export function CategoryIcon({
+  slug,
+  name,
+  className = '',
+}: { slug: string; name: string } & IconProps) {
   const key = `${slug} ${name}`.toLowerCase();
   const path = CATEGORY_ICON_PATHS.find((i) => i.match.test(key))?.path ?? FALLBACK_ICON;
   return (

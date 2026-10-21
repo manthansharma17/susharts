@@ -36,6 +36,15 @@ const envSchema = z.object({
   RAZORPAY_KEY_ID: optionalString,
   RAZORPAY_KEY_SECRET: optionalString,
   RAZORPAY_WEBHOOK_SECRET: optionalString,
+  // Optional; order emails are recorded as FAILED (retryable) until both are set.
+  RESEND_API_KEY: optionalString,
+  EMAIL_FROM: optionalString,
+  EMAIL_REPLY_TO: optionalString,
+  /** Storefront URL used for links in emails; defaults to the first CORS origin. */
+  PUBLIC_WEB_URL: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().url().optional(),
+  ),
 });
 
 export type Env = z.infer<typeof envSchema>;

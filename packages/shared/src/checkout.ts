@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { FulfillmentStatus, OrderTimelineEvent } from './orders.js';
 
 /** Flat shipping fee. Business rule not yet decided; free shipping until it is. */
 export const SHIPPING_FEE_IN_PAISE = 0;
@@ -120,4 +121,12 @@ export interface OrderSummary {
   paidAt: string | null;
   createdAt: string;
   expiresAt: string;
+  fulfillmentStatus: FulfillmentStatus | null;
+  shippingCarrier: string | null;
+  trackingNumber: string | null;
+  shippedAt: string | null;
+  deliveredAt: string | null;
+  /** True if a payment attempt failed (the customer may have retried successfully). */
+  hadFailedPayment: boolean;
+  timeline: OrderTimelineEvent[];
 }

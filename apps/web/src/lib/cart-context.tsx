@@ -1,5 +1,14 @@
 import { MAX_CART_LINE_QUANTITY, MAX_CART_LINES, type CartResponse } from '@susharts/shared';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { apiFetch } from './api-client.js';
 import { useAuth } from './auth-context.js';
 
@@ -21,7 +30,13 @@ interface CartState {
 }
 
 const GUEST_KEY = 'susharts.guestCart.v1';
-const EMPTY: CartResponse = { items: [], subtotalInPaise: 0, itemCount: 0, hasIssues: false, removedVariantIds: [] };
+const EMPTY: CartResponse = {
+  items: [],
+  subtotalInPaise: 0,
+  itemCount: 0,
+  hasIssues: false,
+  removedVariantIds: [],
+};
 
 function readGuest(): GuestItem[] {
   try {
@@ -114,11 +129,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const changeGuest = useCallback(
     async (next: GuestItem[], checkVariantId?: string) => {
       const priced = await previewGuest(next);
-      const line = checkVariantId ? priced.items.find((i) => i.variantId === checkVariantId) : undefined;
+      const line = checkVariantId
+        ? priced.items.find((i) => i.variantId === checkVariantId)
+        : undefined;
       if (checkVariantId && !line) throw new Error('This item is no longer available');
       if (line?.issue === 'UNAVAILABLE') throw new Error('This item is no longer available');
       if (line?.issue === 'INSUFFICIENT_STOCK') {
-        throw new Error(line.availableQuantity ? `Only ${line.availableQuantity} left in stock` : 'This item is out of stock');
+        throw new Error(
+          line.availableQuantity
+            ? `Only ${line.availableQuantity} left in stock`
+            : 'This item is out of stock',
+        );
       }
       writeGuest(next);
       setCart(priced);
@@ -143,7 +164,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         throw new Error(`Your cart can hold at most ${MAX_CART_LINES} different items`);
       }
       const total = (existing?.quantity ?? 0) + quantity;
-      if (total > MAX_CART_LINE_QUANTITY) throw new Error(`You can add at most ${MAX_CART_LINE_QUANTITY} of one item`);
+      if (total > MAX_CART_LINE_QUANTITY)
+        throw new Error(`You can add at most ${MAX_CART_LINE_QUANTITY} of one item`);
       const next = existing
         ? items.map((i) => (i.variantId === variantId ? { ...i, quantity: total } : i))
         : [...items, { variantId, quantity }];
@@ -174,7 +196,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const removeItem = useCallback(
     async (variantId: string) => {
       if (signedIn) {
-        setCart(await apiFetch<CartResponse>(`/api/v1/cart/items/${variantId}`, { method: 'DELETE' }));
+        setCart(
+          await apiFetch<CartResponse>(`/api/v1/cart/items/${variantId}`, { method: 'DELETE' }),
+        );
         return;
       }
       await changeGuest(readGuest().filter((i) => i.variantId !== variantId));

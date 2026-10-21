@@ -9,7 +9,10 @@ import { useAuth } from '../lib/auth-context.js';
 import { useCart } from '../lib/cart-context.js';
 
 function maxFor(line: CartLine): number {
-  return Math.max(1, Math.min(MAX_CART_LINE_QUANTITY, line.availableQuantity ?? MAX_CART_LINE_QUANTITY));
+  return Math.max(
+    1,
+    Math.min(MAX_CART_LINE_QUANTITY, line.availableQuantity ?? MAX_CART_LINE_QUANTITY),
+  );
 }
 
 function CartRow({ line }: { line: CartLine }) {
@@ -33,7 +36,9 @@ function CartRow({ line }: { line: CartLine }) {
   const max = maxFor(line);
 
   return (
-    <li className={`flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ${line.issue ? 'ring-amber-200' : 'ring-blush-100'}`}>
+    <li
+      className={`flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ${line.issue ? 'ring-amber-200' : 'ring-blush-100'}`}
+    >
       <Link
         to={`/products/${line.product.slug}`}
         className={`h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-blush-100 sm:h-28 sm:w-28 ${unavailable ? 'opacity-50 grayscale' : ''}`}
@@ -54,24 +59,33 @@ function CartRow({ line }: { line: CartLine }) {
             >
               {line.product.name}
             </Link>
-            {line.variant.label !== 'Default' && <p className="text-xs text-cocoa-500">{line.variant.label}</p>}
+            {line.variant.label !== 'Default' && (
+              <p className="text-xs text-cocoa-500">{line.variant.label}</p>
+            )}
             {line.product.fulfillmentType === 'MADE_TO_ORDER' && (
               <p className="mt-1 inline-block rounded-full bg-blush-100 px-2 py-0.5 text-xs font-semibold text-blush-700">
-                Made to order{line.product.productionDays ? ` · ~${line.product.productionDays} days` : ''}
+                Made to order
+                {line.product.productionDays ? ` · ~${line.product.productionDays} days` : ''}
               </p>
             )}
           </div>
-          <p className={`shrink-0 font-display text-lg font-semibold ${line.issue ? 'text-cocoa-300 line-through' : 'text-blush-700'}`}>
+          <p
+            className={`shrink-0 font-display text-lg font-semibold ${line.issue ? 'text-cocoa-300 line-through' : 'text-blush-700'}`}
+          >
             {formatInr(line.lineTotalInPaise)}
           </p>
         </div>
 
         {line.issue === 'UNAVAILABLE' && (
-          <p className="mt-2 text-xs font-semibold text-amber-700">No longer available — please remove it.</p>
+          <p className="mt-2 text-xs font-semibold text-amber-700">
+            No longer available — please remove it.
+          </p>
         )}
         {line.issue === 'INSUFFICIENT_STOCK' && (
           <p className="mt-2 text-xs font-semibold text-amber-700">
-            {line.availableQuantity ? `Only ${line.availableQuantity} left — lower the quantity.` : 'Out of stock — please remove it.'}
+            {line.availableQuantity
+              ? `Only ${line.availableQuantity} left — lower the quantity.`
+              : 'Out of stock — please remove it.'}
           </p>
         )}
 
@@ -84,9 +98,13 @@ function CartRow({ line }: { line: CartLine }) {
                 disabled={busy}
                 label={`Quantity of ${line.product.name}`}
                 // If stock dropped below the cart quantity, "−" jumps straight to what's available.
-                onChange={(next) => void run(() => setQuantity(line.variantId, Math.min(next, max)))}
+                onChange={(next) =>
+                  void run(() => setQuantity(line.variantId, Math.min(next, max)))
+                }
               />
-              <span className="text-xs text-cocoa-400">{formatInr(line.variant.priceInPaise)} each</span>
+              <span className="text-xs text-cocoa-400">
+                {formatInr(line.variant.priceInPaise)} each
+              </span>
             </>
           )}
           <button
@@ -126,7 +144,9 @@ export function CartPage() {
       <div className="container-page py-16">
         <div className="mx-auto max-w-md rounded-[2rem] bg-white px-6 py-14 text-center shadow-soft ring-1 ring-blush-100">
           <HeartIcon className="mx-auto h-12 w-12 text-blush-300" />
-          <h1 className="mt-4 font-display text-2xl font-semibold text-cocoa-800">Your cart is empty</h1>
+          <h1 className="mt-4 font-display text-2xl font-semibold text-cocoa-800">
+            Your cart is empty
+          </h1>
           <p className="mt-2 text-sm text-cocoa-500">Find something handmade you'll love.</p>
           <Link to="/shop" className="btn-primary mt-6">
             Start shopping →
@@ -149,7 +169,9 @@ export function CartPage() {
     }
   }
 
-  const hasMadeToOrder = cart.items.some((l) => l.product.fulfillmentType === 'MADE_TO_ORDER' && !l.issue);
+  const hasMadeToOrder = cart.items.some(
+    (l) => l.product.fulfillmentType === 'MADE_TO_ORDER' && !l.issue,
+  );
 
   return (
     <div className="container-page py-8">
@@ -175,7 +197,8 @@ export function CartPage() {
 
       {cart.hasIssues && (
         <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Some items have changed since you added them. They're not counted in your total until you update or remove them.
+          Some items have changed since you added them. They're not counted in your total until you
+          update or remove them.
         </p>
       )}
 
@@ -195,7 +218,9 @@ export function CartPage() {
             </div>
             <div className="flex justify-between border-t border-blush-100 pt-3 text-base font-semibold text-cocoa-800">
               <dt>Subtotal</dt>
-              <dd className="font-display text-xl text-blush-700">{formatInr(cart.subtotalInPaise)}</dd>
+              <dd className="font-display text-xl text-blush-700">
+                {formatInr(cart.subtotalInPaise)}
+              </dd>
             </div>
           </dl>
           <p className="mt-2 text-xs text-cocoa-400">Shipping is calculated at checkout.</p>
@@ -216,13 +241,20 @@ export function CartPage() {
           )}
           {!user && (
             <p className="mt-4 text-center text-xs text-cocoa-500">
-              <button type="button" onClick={() => void signInWithGoogle()} className="font-semibold text-blush-700 hover:underline">
+              <button
+                type="button"
+                onClick={() => void signInWithGoogle()}
+                className="font-semibold text-blush-700 hover:underline"
+              >
                 Sign in
               </button>{' '}
               to save your cart across devices.
             </p>
           )}
-          <Link to="/shop" className="mt-4 block text-center text-sm text-cocoa-500 hover:text-blush-700">
+          <Link
+            to="/shop"
+            className="mt-4 block text-center text-sm text-cocoa-500 hover:text-blush-700"
+          >
             ← Continue shopping
           </Link>
         </aside>

@@ -138,7 +138,8 @@ function detailsPayload(d: Details): { payload: Record<string, unknown> } | { er
 }
 
 function variantPayload(v: VariantDraft): { payload: Record<string, unknown> } | { error: string } {
-  if (!v.label.trim()) return { error: 'Option name is required (use "Default" for a single option).' };
+  if (!v.label.trim())
+    return { error: 'Option name is required (use "Default" for a single option).' };
   if (!v.sku.trim()) return { error: 'SKU is required.' };
   const price = rupeesToPaise(v.price);
   if (price === null || Number.isNaN(price) || price <= 0) {
@@ -149,7 +150,8 @@ function variantPayload(v: VariantDraft): { payload: Record<string, unknown> } |
     return { error: 'Original price must be higher than the selling price, or left blank.' };
   }
   const stock = parseStock(v.stock);
-  if (Number.isNaN(stock)) return { error: 'Stock must be a whole number, or blank for unlimited.' };
+  if (Number.isNaN(stock))
+    return { error: 'Stock must be a whole number, or blank for unlimited.' };
   return {
     payload: {
       label: v.label.trim(),
@@ -162,7 +164,17 @@ function variantPayload(v: VariantDraft): { payload: Record<string, unknown> } |
   };
 }
 
-function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: string | undefined; children: ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  hint,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  hint?: string | undefined;
+  children: ReactNode;
+}) {
   return (
     <div>
       <label htmlFor={htmlFor} className="block text-xs font-semibold text-cocoa-600">
@@ -174,7 +186,15 @@ function Field({ label, htmlFor, hint, children }: { label: string; htmlFor: str
   );
 }
 
-function Card({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+function Card({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-blush-100">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -196,13 +216,20 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
           value={value.name}
           maxLength={200}
           onChange={(e) =>
-            set({ name: e.target.value, ...(value.slugEdited ? {} : { slug: slugify(e.target.value) }) })
+            set({
+              name: e.target.value,
+              ...(value.slugEdited ? {} : { slug: slugify(e.target.value) }),
+            })
           }
           placeholder="e.g. Pink crochet tulip bouquet"
           className="field w-full"
         />
       </Field>
-      <Field label="URL slug" htmlFor="p-slug" hint={value.slug ? `/products/${value.slug}` : undefined}>
+      <Field
+        label="URL slug"
+        htmlFor="p-slug"
+        hint={value.slug ? `/products/${value.slug}` : undefined}
+      >
         <input
           id="p-slug"
           value={value.slug}
@@ -213,11 +240,19 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
       </Field>
       <div className="sm:col-span-2">
         <Field label="Category" htmlFor="p-category">
-          <CategoryPicker id="p-category" value={value.categoryId} onChange={(categoryId) => set({ categoryId })} />
+          <CategoryPicker
+            id="p-category"
+            value={value.categoryId}
+            onChange={(categoryId) => set({ categoryId })}
+          />
         </Field>
       </div>
       <div className="sm:col-span-2">
-        <Field label="Short description" htmlFor="p-short" hint="Shown on product cards. Up to 300 characters.">
+        <Field
+          label="Short description"
+          htmlFor="p-short"
+          hint="Shown on product cards. Up to 300 characters."
+        >
           <input
             id="p-short"
             value={value.shortDescription}
@@ -262,7 +297,11 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
         </select>
       </Field>
       {value.fulfillmentType === 'MADE_TO_ORDER' && (
-        <Field label="Production time (days)" htmlFor="p-days" hint="Optional estimate shown to customers.">
+        <Field
+          label="Production time (days)"
+          htmlFor="p-days"
+          hint="Optional estimate shown to customers."
+        >
           <input
             id="p-days"
             inputMode="numeric"
@@ -276,11 +315,23 @@ function DetailsFields({ value, onChange }: { value: Details; onChange: (d: Deta
   );
 }
 
-function VariantFields({ value, onChange, prefix }: { value: VariantDraft; onChange: (v: VariantDraft) => void; prefix: string }) {
+function VariantFields({
+  value,
+  onChange,
+  prefix,
+}: {
+  value: VariantDraft;
+  onChange: (v: VariantDraft) => void;
+  prefix: string;
+}) {
   const set = (patch: Partial<VariantDraft>) => onChange({ ...value, ...patch });
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Field label="Option name" htmlFor={`${prefix}-label`} hint='e.g. "Small", "Red", or "Default"'>
+      <Field
+        label="Option name"
+        htmlFor={`${prefix}-label`}
+        hint='e.g. "Small", "Red", or "Default"'
+      >
         <input
           id={`${prefix}-label`}
           value={value.label}
@@ -309,7 +360,11 @@ function VariantFields({ value, onChange, prefix }: { value: VariantDraft; onCha
           className="field w-full"
         />
       </Field>
-      <Field label="Original price (₹)" htmlFor={`${prefix}-compare`} hint="Optional; shown crossed out.">
+      <Field
+        label="Original price (₹)"
+        htmlFor={`${prefix}-compare`}
+        hint="Optional; shown crossed out."
+      >
         <input
           id={`${prefix}-compare`}
           inputMode="decimal"
@@ -318,7 +373,11 @@ function VariantFields({ value, onChange, prefix }: { value: VariantDraft; onCha
           className="field w-full"
         />
       </Field>
-      <Field label="Stock" htmlFor={`${prefix}-stock`} hint="Leave blank for unlimited (made to order).">
+      <Field
+        label="Stock"
+        htmlFor={`${prefix}-stock`}
+        hint="Leave blank for unlimited (made to order)."
+      >
         <input
           id={`${prefix}-stock`}
           inputMode="numeric"
@@ -342,7 +401,15 @@ function VariantFields({ value, onChange, prefix }: { value: VariantDraft; onCha
   );
 }
 
-function VariantRow({ variant, onChanged, onDeleted }: { variant: AdminVariant; onChanged: (v: AdminVariant) => void; onDeleted: (id: string) => void }) {
+function VariantRow({
+  variant,
+  onChanged,
+  onDeleted,
+}: {
+  variant: AdminVariant;
+  onChanged: (v: AdminVariant) => void;
+  onDeleted: (id: string) => void;
+}) {
   const [draft, setDraft] = useState(() => variantFrom(variant));
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
@@ -385,7 +452,12 @@ function VariantRow({ variant, onChanged, onDeleted }: { variant: AdminVariant; 
     <li className="rounded-2xl bg-blush-50/60 p-4 ring-1 ring-blush-100">
       <VariantFields value={draft} onChange={setDraft} prefix={`v-${variant.id}`} />
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" disabled={busy} onClick={() => void save()} className="btn-primary px-4 py-1.5 text-xs">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void save()}
+          className="btn-primary px-4 py-1.5 text-xs"
+        >
           Save option
         </button>
         <button
@@ -397,7 +469,9 @@ function VariantRow({ variant, onChanged, onDeleted }: { variant: AdminVariant; 
           Delete
         </button>
         {message && (
-          <span className={`text-xs ${message.error ? 'text-red-700' : 'text-green-700'}`}>{message.text}</span>
+          <span className={`text-xs ${message.error ? 'text-red-700' : 'text-green-700'}`}>
+            {message.text}
+          </span>
         )}
       </div>
     </li>
@@ -407,7 +481,10 @@ function VariantRow({ variant, onChanged, onDeleted }: { variant: AdminVariant; 
 function VariantsEditor({ productId, initial }: { productId: string; initial: AdminVariant[] }) {
   const [variants, setVariants] = useState(initial);
   const [adding, setAdding] = useState(initial.length === 0);
-  const [draft, setDraft] = useState<VariantDraft>({ ...EMPTY_VARIANT, label: initial.length ? '' : 'Default' });
+  const [draft, setDraft] = useState<VariantDraft>({
+    ...EMPTY_VARIANT,
+    label: initial.length ? '' : 'Default',
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -439,7 +516,11 @@ function VariantsEditor({ productId, initial }: { productId: string; initial: Ad
       title="Price & stock"
       action={
         !adding && (
-          <button type="button" onClick={() => setAdding(true)} className="btn-secondary px-3 py-1 text-xs">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="btn-secondary px-3 py-1 text-xs"
+          >
             + Add option
           </button>
         )
@@ -455,21 +536,34 @@ function VariantsEditor({ productId, initial }: { productId: string; initial: Ad
           <VariantRow
             key={v.id}
             variant={v}
-            onChanged={(saved) => setVariants((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))}
+            onChanged={(saved) =>
+              setVariants((prev) => prev.map((x) => (x.id === saved.id ? saved : x)))
+            }
             onDeleted={(id) => setVariants((prev) => prev.filter((x) => x.id !== id))}
           />
         ))}
       </ul>
       {adding && (
-        <div className={`rounded-2xl border border-dashed border-blush-300 p-4 ${variants.length ? 'mt-4' : ''}`}>
+        <div
+          className={`rounded-2xl border border-dashed border-blush-300 p-4 ${variants.length ? 'mt-4' : ''}`}
+        >
           <VariantFields value={draft} onChange={setDraft} prefix="v-new" />
           {error && <p className="mt-3 text-xs text-red-700">{error}</p>}
           <div className="mt-4 flex gap-2">
-            <button type="button" disabled={busy} onClick={() => void add()} className="btn-primary px-4 py-1.5 text-xs">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void add()}
+              className="btn-primary px-4 py-1.5 text-xs"
+            >
               {busy ? 'Adding…' : 'Add option'}
             </button>
             {variants.length > 0 && (
-              <button type="button" onClick={() => setAdding(false)} className="btn-secondary px-4 py-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="btn-secondary px-4 py-1.5 text-xs"
+              >
                 Cancel
               </button>
             )}
@@ -513,10 +607,15 @@ function CreateProduct() {
         method: 'POST',
         body: JSON.stringify(v.payload),
       });
-      navigate(`/admin/products/${product.id}`, { state: { notice: 'Product created. Now add some photos!' } });
+      navigate(`/admin/products/${product.id}`, {
+        state: { notice: 'Product created. Now add some photos!' },
+      });
     } catch (err) {
       navigate(`/admin/products/${product.id}`, {
-        state: { notice: `Product saved, but its price couldn't be added: ${errorText(err)}`, isError: true },
+        state: {
+          notice: `Product saved, but its price couldn't be added: ${errorText(err)}`,
+          isError: true,
+        },
       });
     }
   }
@@ -528,7 +627,9 @@ function CreateProduct() {
       </Card>
       <Card title="Price & stock">
         <VariantFields value={variant} onChange={setVariant} prefix="v-first" />
-        <p className="mt-4 text-xs text-cocoa-400">You can add more options (sizes, colours) after creating the product.</p>
+        <p className="mt-4 text-xs text-cocoa-400">
+          You can add more options (sizes, colours) after creating the product.
+        </p>
       </Card>
       {error && (
         <p role="alert" className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -553,7 +654,9 @@ function EditProduct({ id }: { id: string }) {
   const product = useApi<AdminProduct>(`/api/v1/admin/products/${id}`);
   const [details, setDetails] = useState<Details | null>(null);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(
-    initialNotice?.notice ? { error: Boolean(initialNotice.isError), text: initialNotice.notice } : null,
+    initialNotice?.notice
+      ? { error: Boolean(initialNotice.isError), text: initialNotice.notice }
+      : null,
   );
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<{ status: Status; slug: string } | null>(null);
@@ -567,7 +670,9 @@ function EditProduct({ id }: { id: string }) {
     return <EmptyState title="Product not found" actionLabel="All products" actionTo="/admin" />;
   }
   if (product.error || !product.data || !details) {
-    return <ErrorMessage message={product.error ?? 'Could not load product'} onRetry={product.refetch} />;
+    return (
+      <ErrorMessage message={product.error ?? 'Could not load product'} onRetry={product.refetch} />
+    );
   }
 
   const data = product.data;

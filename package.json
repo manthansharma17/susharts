@@ -14,7 +14,8 @@
     "test": "pnpm build:libs && pnpm -r test",
     "db:generate": "pnpm --filter @susharts/db generate",
     "db:migrate": "pnpm --filter @susharts/db migrate",
-    "build:libs": "pnpm --filter \"./packages/*\" build"
+    "build:libs": "pnpm --filter \"./packages/*\" build",
+    "vercel-build": "pnpm --filter @susharts/db generate && pnpm build:libs && pnpm --filter @susharts/api build && pnpm --filter @susharts/web build"
   },
   "devDependencies": {
     "@eslint/js": "9.17.0",
